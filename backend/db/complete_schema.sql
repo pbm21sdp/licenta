@@ -255,7 +255,7 @@ CREATE TABLE scheduled_meetings ( -- se creeaza o tabela noua numita scheduled m
     pet_id INTEGER REFERENCES pets(id) ON DELETE CASCADE, -- foreign key, reprezinta id-ul animalului din tabela pets, este de tip intreg, REFERENCES pets(id) pentru ca trebuie sa existe in tabela pets, ON DELETE CASCADE inseamna ca daca sterg un animal, se sterge automat si din istoricul de swipe-uri
     
     -- actiunea utilizatorului
-    action VARCHAR(10) NOT NULL, -- camp pentru tipul actiunii ('like' sau 'pass'), de tip text de maxim 10 caractere, NOT NULL pentru ca trebuie obligatoriu completat, 'like' inseamna swipe right (interesat), 'pass' inseamna swipe left (nu e interesat)
+    action VARCHAR(10) NOT NULL CHECK (action IN ('like', 'pass')), -- camp pentru tipul actiunii ('like' sau 'pass'), de tip text de maxim 10 caractere, NOT NULL pentru ca trebuie obligatoriu completat, 'like' inseamna swipe right (interesat), 'pass' inseamna swipe left (nu e interesat)
     
     -- timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- camp de tip data si ora care retine cand a fost efectuat swipe-ul, CURRENT_TIMESTAMP retine exact momentul in care a fost efectuat, util pentru statistici si pentru a nu arata din nou acelasi animal userului
