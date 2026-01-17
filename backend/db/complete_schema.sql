@@ -286,6 +286,7 @@ CREATE TABLE scheduled_meetings ( -- se creeaza o tabela noua numita scheduled m
     other_pet_types TEXT[], -- camp de tip array de text care stocheaza tipurile animalelor existente (['dog', 'cat', 'bird', 'rabbit', 'other']), permite selectie multipla, folosit pentru verificarea compatibilitatii
     
     -- timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- camp de tip data si ora care retine cand au fost create preferintele, CURRENT_TIMESTAMP retine exact momentul in care au fost create
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- camp de tip data si ora care retine cand au fost actualizate preferintele, CURRENT_TIMESTAMP retine exact momentul in care au fost actualizate, se modifica automat prin trigger cand userul isi schimba preferintele
 );
 
