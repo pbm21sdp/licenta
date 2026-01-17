@@ -236,8 +236,8 @@ CREATE TABLE scheduled_meetings ( -- se creeaza o tabela noua numita scheduled m
   CREATE TABLE favorites ( -- se creeaza o tabela noua numita favorites
     -- campuri pentru identificare
     id SERIAL PRIMARY KEY, -- camp de identificare unica a favoritului, serial pentru ca e un nr care creste automat si primary key pentru ca e unic pentru fiecare favorit, nu pot fi doua favorite cu acelasi id
-    user_id INTEGER REFERENCES users(id), -- foreign key, reprezinta id-ul utilizatorului din tabela users, este de tip intreg, REFERENCES users(id) pentru ca trebuie sa existe in tabela users, ON DELETE CASCADE inseamna ca daca sterg un user, se sterg automat si favoritele lui
-    pet_id INTEGER REFERENCES pets(id), -- foreign key, reprezinta id-ul animalului din tabela pets, este de tip intreg, REFERENCES pets(id) pentru ca trebuie sa existe in tabela pets, ON DELETE CASCADE inseamna ca daca sterg un animal, se sterge automat si din listele de favorite
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, -- foreign key, reprezinta id-ul utilizatorului din tabela users, este de tip intreg, REFERENCES users(id) pentru ca trebuie sa existe in tabela users, ON DELETE CASCADE inseamna ca daca sterg un user, se sterg automat si favoritele lui
+    pet_id INTEGER REFERENCES pets(id) ON DELETE CASCADE, -- foreign key, reprezinta id-ul animalului din tabela pets, este de tip intreg, REFERENCES pets(id) pentru ca trebuie sa existe in tabela pets, ON DELETE CASCADE inseamna ca daca sterg un animal, se sterge automat si din listele de favorite
 
     -- timestamps
     created_at TIMESTAMP DEFAULT NOW(), -- camp de tip data si ora care retine cand a fost adaugat animalul la favorite, CURRENT_TIMESTAMP retine exact momentul in care a fost adaugat, util pentru sortare cronologica
