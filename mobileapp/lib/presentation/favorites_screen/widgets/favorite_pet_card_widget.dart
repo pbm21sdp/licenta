@@ -19,16 +19,47 @@ class FavoritePetCardWidget extends StatelessWidget {
     required this.onRemove,
   });
 
+  Future<bool?> _showRemoveConfirmation(BuildContext context) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Remove from Favorites?'),
+          content: const Text(
+            'Are you sure you want to remove this pet from your favorites?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('CANCEL'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+              ),
+              child: const Text('REMOVE'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isAvailable = pet["isAvailable"] as bool? ?? true;
+    final isAvailable = pet["is_available"] as bool? ?? true;
 
     return Dismissible(
-      key: Key(pet["id"].toString()),
+      key: Key(pet["id"]?.toString() ?? 'unknown'),
       direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        onRemove(); // Changed from onDismissed() to onRemove()
+      confirmDismiss: (direction) async {
+        final confirmed = await _showRemoveConfirmation(context);
+        if (confirmed == true) {
+          onRemove();
+        }
+        return confirmed;
       },
       background: Container(
         alignment: Alignment.centerRight,
@@ -44,12 +75,7 @@ class FavoritePetCardWidget extends StatelessWidget {
         ),
       ),
       child: GestureDetector(
-        onTap: () {
-          Navigator.of(context, rootNavigator: true).pushNamed(
-            AppRoutes.petDetail,
-            arguments: {...pet, 'isFavorite': true},
-          );
-        },
+        onTap: onTap,
         onLongPress: onLongPress,
         child: Container(
           decoration: BoxDecoration(
@@ -76,11 +102,12 @@ class FavoritePetCardWidget extends StatelessWidget {
                         top: Radius.circular(12),
                       ),
                       child: CustomImageWidget(
-                        imageUrl: pet["image"] as String,
+                        imageUrl: pet["image"] as String? ?? '',
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.cover,
-                        semanticLabel: pet["semanticLabel"] as String,
+                        semanticLabel:
+                            pet["semanticLabel"] as String? ?? 'Pet photo',
                       ),
                     ),
 
@@ -141,7 +168,7 @@ class FavoritePetCardWidget extends StatelessWidget {
                   children: [
                     // Name
                     Text(
-                      pet["name"] as String,
+                      pet["name"] as String? ?? 'Unknown',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -152,7 +179,7 @@ class FavoritePetCardWidget extends StatelessWidget {
 
                     // Age and breed
                     Text(
-                      '${pet["age"]} • ${pet["breed"]}',
+                      '${pet["age"] ?? 'Unknown age'} • ${pet["breed"] ?? 'Unknown breed'}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -165,17 +192,18 @@ class FavoritePetCardWidget extends StatelessWidget {
                     Row(
                       children: [
                         CustomIconWidget(
-                          iconName: (pet["gender"] as String) == 'Male'
+                          iconName:
+                              (pet["gender"] as String? ?? 'Male') == 'Male'
                               ? 'male'
                               : 'female',
-                          color: (pet["gender"] as String) == 'Male'
+                          color: (pet["gender"] as String? ?? 'Male') == 'Male'
                               ? Colors.blue
                               : Colors.pink,
                           size: 16,
                         ),
                         SizedBox(width: 1.w),
                         Text(
-                          pet["gender"] as String,
+                          pet["gender"] as String? ?? 'Unknown',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
