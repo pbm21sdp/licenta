@@ -264,7 +264,32 @@ CREATE TABLE scheduled_meetings ( -- se creeaza o tabela noua numita scheduled m
     UNIQUE(user_id, pet_id) -- constrangere care asigura ca un utilizator nu poate da swipe de mai multe ori la acelasi animal, combinatia user_id + pet_id trebuie sa fie unica in tabela, astfel animalul nu va mai aparea in feed dupa ce utilizatorul a actionat asupra lui
 );
 
--- 11. INDEXES FOR PERFORMANCE
+-- 11. USER PREFERENCES TABLE
+
+  CREATE TABLE user_preferences ( -- se creeaza o tabela noua numita user_preferences, pentru stocarea preferintelor utilizatorului colectate la onboarding, folosite pentru personalizarea feed-ului
+    -- campuri pentru identificare
+    id SERIAL PRIMARY KEY, -- camp de identificare unica a preferintelor, serial pentru ca e un nr care creste automat si primary key pentru ca e unic pentru fiecare set de preferinte, nu pot fi doua seturi cu acelasi id
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE UNIQUE, -- foreign key, reprezinta id-ul utilizatorului din tabela users, este de tip intreg, REFERENCES users(id) pentru ca trebuie sa existe in tabela users, ON DELETE CASCADE inseamna ca daca sterg un user, se sterg automat si preferintele lui, UNIQUE pentru ca un user poate avea un singur set de preferinte (relatie one-to-one)
+    
+    -- preferinte despre animale
+    preferred_pet_types TEXT[], -- camp de tip array de text care stocheaza tipurile de animale preferate (['dog', 'cat', 'bird', 'rabbit', 'other']), permite selectie multipla, folosit pentru filtrarea animalelor afisate in feed
+    
+    -- informatii despre locuinta
+    has_garden BOOLEAN, -- camp de tip boolean care retine daca utilizatorul are curte/gradina, important pentru animalele care au nevoie de spatiu exterior
+    
+    -- informatii despre familie
+    has_children BOOLEAN, -- camp de tip boolean care retine daca utilizatorul are copii, relevant pentru compatibilitatea cu animalele good_with_kids
+    children_ages TEXT[], -- camp de tip array de text care stocheaza varstele copiilor (['0-2', '3-5', '6-12', '13+']), permite stocarea mai multor varste, util pentru recomandari specifice
+    
+    -- informatii despre alte animale de companie
+    has_other_pets BOOLEAN, -- camp de tip boolean care retine daca utilizatorul are deja alte animale, important pentru compatibilitate
+    other_pet_types TEXT[], -- camp de tip array de text care stocheaza tipurile animalelor existente (['dog', 'cat', 'bird', 'rabbit', 'other']), permite selectie multipla, folosit pentru verificarea compatibilitatii
+    
+    -- timestamps
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- camp de tip data si ora care retine cand au fost actualizate preferintele, CURRENT_TIMESTAMP retine exact momentul in care au fost actualizate, se modifica automat prin trigger cand userul isi schimba preferintele
+);
+
+-- 12. INDEXES FOR PERFORMANCE
 -- indexes sunt structuri de date suplimentare care permit cautari rapide
 -- fara index postgreSQL scaneaza toate randurile, deci este lent pentru tabele mari
 -- cu index postgreSQL foloseste o structura sortata pentru gasire instantanee
@@ -327,7 +352,14 @@ CREATE INDEX idx_user_swipes_pet_id ON user_swipes(pet_id); -- index pe pet_id p
 CREATE INDEX idx_user_swipes_action ON user_swipes(action); -- index pe action pentru filtrarea dupa tipul de actiune, util pentru statistici - WHERE action = 'like'
 CREATE INDEX idx_user_swipes_user_action ON user_swipes(user_id, action); -- index compus pentru gasire rapida a tuturor like-urilor unui utilizator - WHERE user_id = ... AND action = 'like'
 
--- 12. TRIGGERS
+-- index pentru user_preferences
+CREATE INDEX idx_user_preferences_user_id ON user_preferences(user_id); -- index pe user_id pentru gasire rapida a preferintelor unui utilizator - WHERE user_id = ...
+CREATE INDEX idx_user_preferences_pet_types ON user_preferences USING GIN(preferred_pet_types); -- index GIN pe preferred_pet_types pentru cautare eficienta in array-uri - WHERE 'dog' = ANY(preferred_pet_types)
+CREATE INDEX idx_user_preferences_has_garden ON user_preferences(has_garden); -- index pe has_garden pentru filtrarea utilizatorilor cu gradina - WHERE has_garden = true
+CREATE INDEX idx_user_preferences_has_children ON user_preferences(has_children); -- index pe has_children pentru filtrarea utilizatorilor cu copii - WHERE has_children = true
+CREATE INDEX idx_user_preferences_has_other_pets ON user_preferences(has_other_pets); -- index pe has_other_pets pentru filtrarea utilizatorilor care au deja animale - WHERE has_other_pets = true
+
+-- 13. TRIGGERS
 
 -- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -381,6 +413,11 @@ CREATE TRIGGER set_pet_availability
     FOR EACH ROW
     EXECUTE FUNCTION update_pet_availability();
 
+CREATE TRIGGER update_user_preferences_updated_at
+    BEFORE UPDATE ON user_preferences
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- =====================================================
 -- COMMENTS FOR DOCUMENTATION
 -- =====================================================
@@ -395,6 +432,7 @@ COMMENT ON TABLE messages IS 'Simple contact messages from users to shelter';
 COMMENT ON TABLE scheduled_meetings IS 'Meeting requests linked to adoption applications';
 COMMENT ON TABLE user_swipes IS 'Tinder-style swipe interactions - tracks likes and passes to prevent showing same pets again';
 COMMENT ON TABLE favorites IS 'User favorite pets - many-to-many relationship between users and pets';
+COMMENT ON TABLE user_preferences IS 'User preferences collected during onboarding - used for personalized pet recommendations';
 
 COMMENT ON COLUMN pets.ai_breed_detected IS 'Breed detected by CLIP AI model';
 COMMENT ON COLUMN pets.ai_confidence IS 'AI detection confidence score (0-100)';
@@ -404,6 +442,9 @@ COMMENT ON COLUMN donations.status IS 'pending, completed, canceled, failed';
 COMMENT ON COLUMN scheduled_meetings.status IS 'pending, accepted, rejected';
 COMMENT ON COLUMN messages.message IS 'Limited to 1800 characters';
 COMMENT ON COLUMN user_swipes.action IS 'like (swipe right - interested) or pass (swipe left - not interested)';
+COMMENT ON COLUMN user_preferences.preferred_pet_types IS 'Array of preferred pet types: dog, cat, bird, rabbit, other';
+COMMENT ON COLUMN user_preferences.children_ages IS 'Array of children age ranges: 0-2, 3-5, 6-12, 13+';
+COMMENT ON COLUMN user_preferences.other_pet_types IS 'Array of existing pet types for compatibility checking';
 
 -- =====================================================
 -- INITIAL ADMIN USER (Optional - for testing)
