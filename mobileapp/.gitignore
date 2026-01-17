@@ -40,11 +40,16 @@ app.*.symbols
 
 # Obfuscation related
 app.*.map.json
-
+.metadata
 # Android Studio will place build artifacts here
 /android/app/debug
 /android/app/profile
 /android/app/release
 android/app/.cxx
-
 env.json
+
+PRD.md
+CLAUDE.md
+PLANNING.md
+ROCKET.md
+TASKS.md
