@@ -317,6 +317,10 @@ CREATE INDEX idx_meetings_adoption_id ON scheduled_meetings(adoption_id); -- ind
 CREATE INDEX idx_meetings_date ON scheduled_meetings(scheduled_date); -- index pe scheduled_date pentru a filtra inatlnirile cronologic - WHERE scheduled_date >= CURRENT_DATE ORDER BY scheduled_date
 CREATE INDEX idx_meetings_status ON scheduled_meetings(status); -- index pe status pentru filtrarea intalnirilor dupa stare - WHERE status = '...'
 
+-- index pentru favorites
+CREATE INDEX idx_favorites_user_id ON favorites(user_id); -- index pe user_id pentru gasire rapida a tuturor favoritelor unui utilizator - WHERE user_id = ...
+CREATE INDEX idx_favorites_pet_id ON favorites(pet_id); -- index pe pet_id pentru a vedea cati utilizatori au adaugat un anumit animal la favorite - WHERE pet_id = ...
+
 -- index pentru user_swipes
 CREATE INDEX idx_user_swipes_user_id ON user_swipes(user_id); -- index pe user_id pentru gasire rapida a tuturor swipe-urilor unui utilizator - WHERE user_id = ...
 CREATE INDEX idx_user_swipes_pet_id ON user_swipes(pet_id); -- index pe pet_id pentru a vedea cati utilizatori au dat like/pass unui anumit animal - WHERE pet_id = ...
@@ -390,6 +394,7 @@ COMMENT ON TABLE donations IS 'Monetary donations via Stripe';
 COMMENT ON TABLE messages IS 'Simple contact messages from users to shelter';
 COMMENT ON TABLE scheduled_meetings IS 'Meeting requests linked to adoption applications';
 COMMENT ON TABLE user_swipes IS 'Tinder-style swipe interactions - tracks likes and passes to prevent showing same pets again';
+COMMENT ON TABLE favorites IS 'User favorite pets - many-to-many relationship between users and pets';
 
 COMMENT ON COLUMN pets.ai_breed_detected IS 'Breed detected by CLIP AI model';
 COMMENT ON COLUMN pets.ai_confidence IS 'AI detection confidence score (0-100)';
