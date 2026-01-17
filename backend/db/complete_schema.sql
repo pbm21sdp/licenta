@@ -170,7 +170,7 @@ CREATE TABLE adoptions ( -- se creeaza o tabela noua numita adoptions
 CREATE TABLE donations ( -- se creeaza o tabela noua numita donations, pentru gestionarea donatiilor monetare catre adapost
     -- campuri pentru identificare
     id SERIAL PRIMARY KEY, -- camp de identificare unica a donatiei, serial pentru ca e un nr care creste automat si primary key pentru ca e unic pentru fiecare donatie, nu pot fi doua donatii cu acelasi id
-    user_id INTEGER REFERENCES users(id) ON DELETE NULL, -- -- foreign key, face legatura cu userul care doneaza, INTEGER pentru ca id-ul este de tip intreg, REFERENCES users(id), pentru ca trebuie sa existe in tabela users, ON DELETE SET NULL - daca userul isi sterge contul (GDPR), user_id devine NULL dar cererea ramane in sistem pentru istoric, spre deosebire de cascade care ar sterge tot
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, -- -- foreign key, face legatura cu userul care doneaza, INTEGER pentru ca id-ul este de tip intreg, REFERENCES users(id), pentru ca trebuie sa existe in tabela users, ON DELETE SET NULL - daca userul isi sterge contul (GDPR), user_id devine NULL dar cererea ramane in sistem pentru istoric, spre deosebire de cascade care ar sterge tot
     email VARCHAR(255) NOT NULL, -- camp pentru email, de tip text de maxim 255 de caractere, NOT NULL pentru ca trebuie obligatoriu completat
     
     -- campuri pentru valoarea tranzactiei
