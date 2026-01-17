@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 
-/// Login Screen for pet adoption app authentication
-/// Implements secure email/password authentication with mobile-optimized input
-/// Uses stack navigation, accessible from welcome screen or when session expires
+/// Login Screen with Supabase authentication
+/// Implements email verification checking and activation notification
+/// Restricts adoption actions for unverified users
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,21 +16,14 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Form key for validation
   final _formKey = GlobalKey<FormState>();
-
-  // Text editing controllers
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _authService = AuthService.instance;
 
-  // State variables
   bool _isPasswordVisible = false;
   bool _isLoading = false;
   String? _errorMessage;
-
-  // Mock credentials for authentication
-  final String _mockEmail = "user@petadoption.com";
-  final String _mockPassword = "PetLover123";
 
   @override
   void dispose() {
@@ -38,7 +32,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  /// Validates email format
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
       return 'Email is required';
@@ -50,7 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  /// Validates password
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
       return 'Password is required';
@@ -61,72 +53,206 @@ class _LoginScreenState extends State<LoginScreen> {
     return null;
   }
 
-  /// Handles sign in authentication
   Future<void> _handleSignIn() async {
-    // Clear previous error
     setState(() {
       _errorMessage = null;
     });
 
-    // Validate form
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Show loading state
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate authentication delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Sign in with Supabase
+      final response = await _authService.signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    // Check credentials
-    if (_emailController.text.trim() == _mockEmail &&
-        _passwordController.text == _mockPassword) {
-      // Success - navigate to main pets screen
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+      if (!mounted) return;
+
+      // Check email verification status
+      final isVerified = await _authService.isEmailVerified();
+
+      if (!isVerified) {
+        // Show verification warning dialog
+        _showVerificationWarningDialog();
+      } else {
+        // Navigate to main pets screen
         Navigator.of(
           context,
           rootNavigator: true,
         ).pushReplacementNamed('/main-pets-screen');
       }
-    } else {
-      // Failed authentication
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = 'Invalid email or password. Please try again.';
-        });
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = 'Invalid email or password. Please try again.';
+      if (e.toString().contains('Invalid login credentials')) {
+        errorMessage =
+            'Invalid email or password. Please check your credentials.';
+      } else if (e.toString().contains('Email not confirmed')) {
+        errorMessage = 'Please verify your email before logging in.';
+      } else if (e.toString().contains('User not found')) {
+        errorMessage =
+            'No account found with this email. Please register first.';
+      }
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = errorMessage;
+      });
+    } finally {
+      if (mounted && _errorMessage == null) {
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  /// Handles forgot password navigation
-  void _handleForgotPassword() {
-    // Show password reset dialog
+  void _showVerificationWarningDialog() {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Reset Password',
-          style: Theme.of(context).textTheme.titleLarge,
+        title: Row(
+          children: [
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Theme.of(context).colorScheme.error,
+              size: 28,
+            ),
+            SizedBox(width: 3.w),
+            const Expanded(child: Text('Email Not Verified')),
+          ],
         ),
-        content: Text(
-          'Password reset functionality will be available soon. Please contact support for assistance.',
-          style: Theme.of(context).textTheme.bodyMedium,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Your email address has not been verified yet.',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 2.h),
+            const Text(
+              'You can browse pets, but adoption actions are restricted until you verify your email.',
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'Please check your inbox for the verification link.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12.sp,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
+            onPressed: () async {
+              try {
+                await _authService.resendVerificationEmail();
+                if (!mounted) return;
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Verification email sent!'),
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to resend email: $e'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+              }
+            },
+            child: const Text('Resend Email'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(
+                context,
+                rootNavigator: true,
+              ).pushReplacementNamed('/main-pets-screen');
+            },
+            child: const Text('Continue Anyway'),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleForgotPassword() async {
+    if (_emailController.text.trim().isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'Reset Password',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          content: const Text('Please enter your email address first.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _authService.resetPassword(email: _emailController.text.trim());
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(
+            'Password Reset Email Sent',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          content: Text(
+            'A password reset link has been sent to ${_emailController.text.trim()}. Please check your email.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error', style: Theme.of(context).textTheme.titleLarge),
+          content: Text('Failed to send reset email: $e'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override
@@ -180,14 +306,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: 20.w,
                           height: 20.w,
                           decoration: BoxDecoration(
-                            image: const DecorationImage(
-                              image: AssetImage(
-                                'assets/images/logo.png',
-                              ),
-                              fit: BoxFit.contain
+                            color: theme.colorScheme.primary,
+                            borderRadius: BorderRadius.circular(4.w),
+                          ),
+                          child: Center(
+                            child: CustomIconWidget(
+                              iconName: 'pets',
+                              color: theme.colorScheme.onPrimary,
+                              size: 10.w,
                             ),
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12.w),
                           ),
                         ),
                       ),
@@ -214,6 +341,69 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
 
                       SizedBox(height: 4.h),
+
+                      // Demo credentials section
+                      Container(
+                        padding: EdgeInsets.all(3.w),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: theme.colorScheme.outline,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  size: 18,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                SizedBox(width: 2.w),
+                                Text(
+                                  'Demo Credentials',
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 1.h),
+                            Text(
+                              'Verified User:',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'verified@petadoption.com / VerifiedUser123',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            SizedBox(height: 0.5.h),
+                            Text(
+                              'Unverified User:',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              'unverified@petadoption.com / UnverifiedUser123',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 3.h),
 
                       // Login form
                       Form(
