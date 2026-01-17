@@ -9,7 +9,9 @@ import './widgets/pet_stats_grid_widget.dart';
 import './widgets/photo_gallery_widget.dart';
 
 class PetDetailScreen extends StatefulWidget {
-  const PetDetailScreen({super.key});
+  final Map<String, dynamic> pet;
+
+  const PetDetailScreen({super.key, required this.pet});
 
   @override
   State<PetDetailScreen> createState() => _PetDetailScreenState();
@@ -52,8 +54,11 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          AdoptionFormWidget(petName: _petData?['name'] ?? ''),
+      builder: (context) => AdoptionFormWidget(
+        petId: _petData?['id']?.toString() ?? 'unknown',
+        petName: _petData?['name']?.toString() ?? 'Pet',
+        shelterId: _petData?['shelter_id']?.toString() ?? '',
+      ),
     );
   }
 
@@ -90,13 +95,40 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
       );
     }
 
-    final gallery = _petData!['gallery'] as List<dynamic>? ?? [];
+    // Safely extract data with null checks and type conversions
+    final petName = _petData!['name']?.toString() ?? 'Unknown Pet';
+    final petGender = _petData!['gender']?.toString() ?? 'Unknown';
+    final petAge = _petData!['age']?.toString() ?? 'Unknown age';
+    final petBreed = _petData!['breed']?.toString() ?? 'Mixed Breed';
+    // Map 'description' to 'bio' and provide fallback
+    final petBio =
+        (_petData!['bio'] ?? _petData!['description'])?.toString() ??
+        'No description available';
+    // Map 'health_status' to 'healthStatus' and provide fallback
+    final petHealthStatus =
+        (_petData!['healthStatus'] ?? _petData!['health_status'])?.toString() ??
+        'Unknown health status';
+
+    final gallery =
+        _petData!['pet_gallery'] as List<dynamic>? ??
+        _petData!['gallery'] as List<dynamic>? ??
+        [];
     final galleryImages = gallery.isNotEmpty
         ? gallery
+              .map(
+                (img) => {
+                  'url': img['image_url'] ?? img['url'],
+                  'semanticLabel':
+                      img['image_semantic_label'] ??
+                      img['semanticLabel'] ??
+                      'Pet photo',
+                },
+              )
+              .toList()
         : [
             {
-              'url': _petData!['image'],
-              'semanticLabel': _petData!['semanticLabel'],
+              'url': _petData!['image'] ?? '',
+              'semanticLabel': _petData!['semanticLabel'] ?? 'Pet photo',
             },
           ];
 
@@ -118,22 +150,17 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SizedBox(height: 2.h),
-                        PetInfoHeaderWidget(
-                          name: _petData!['name'] as String,
-                          gender: _petData!['gender'] as String,
-                        ),
+                        PetInfoHeaderWidget(name: petName, gender: petGender),
                         SizedBox(height: 2.h),
                         PetStatsGridWidget(
-                          age: _petData!['age'] as String,
-                          breed: _petData!['breed'] as String,
-                          gender: _petData!['gender'] as String,
+                          age: petAge,
+                          breed: petBreed,
+                          gender: petGender,
                         ),
                         SizedBox(height: 3.h),
-                        BioSectionWidget(bio: _petData!['bio'] as String),
+                        BioSectionWidget(bio: petBio),
                         SizedBox(height: 3.h),
-                        HealthStatusWidget(
-                          healthStatus: _petData!['healthStatus'] as String,
-                        ),
+                        HealthStatusWidget(healthStatus: petHealthStatus),
                         SizedBox(height: 12.h),
                       ],
                     ),

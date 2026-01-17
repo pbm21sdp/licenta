@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-class AdoptionFormWidget extends StatefulWidget {
-  final String petName;
+import '../../../core/app_export.dart';
+import '../../../services/adoption_service.dart';
+import '../../../services/auth_service.dart';
+import '../../../widgets/custom_icon_widget.dart';
 
-  const AdoptionFormWidget({super.key, required this.petName});
+class AdoptionFormWidget extends StatefulWidget {
+  final String petId;
+  final String petName;
+  final String shelterId;
+
+  const AdoptionFormWidget({
+    super.key,
+    required this.petId,
+    required this.petName,
+    required this.shelterId,
+  });
 
   @override
   State<AdoptionFormWidget> createState() => _AdoptionFormWidgetState();
@@ -12,15 +24,36 @@ class AdoptionFormWidget extends StatefulWidget {
 
 class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
   final _formKey = GlobalKey<FormState>();
+  final _adoptionService = AdoptionService();
+  final _authService = AuthService.instance;
+
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  String _housingType = 'House';
-  String _hasGarden = 'Yes';
+  final _notesController = TextEditingController();
+
+  String _housingType = 'house';
+  final String _experienceLevel = 'some_experience';
+  bool _hasGarden = false;
+  final bool _hasExistingPets = false;
   String _hasPets = 'No';
   String _experience = 'First time';
-  bool _isSubmitting = false;
+  bool _isLoading = false;
+  bool _isEmailVerified = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkEmailVerification();
+  }
+
+  Future<void> _checkEmailVerification() async {
+    final isVerified = await _authService.isEmailVerified();
+    setState(() {
+      _isEmailVerified = isVerified;
+    });
+  }
 
   @override
   void dispose() {
@@ -28,34 +61,151 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
-  Future<void> _submitForm() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isSubmitting = true;
-      });
+  Future<void> _handleSubmit() async {
+    // Check email verification first
+    if (!_isEmailVerified) {
+      _showEmailVerificationRequired();
+      return;
+    }
 
-      await Future.delayed(Duration(seconds: 2));
+    if (!_formKey.currentState!.validate()) return;
 
-      setState(() {
-        _isSubmitting = false;
-      });
+    setState(() => _isLoading = true);
 
-      if (mounted) {
-        Navigator.pop(context);
+    try {
+      final hasDuplicate = await _adoptionService.hasExistingApplication(
+        petId: widget.petId,
+        applicantEmail: _emailController.text.trim(),
+      );
+
+      if (hasDuplicate) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Application submitted successfully! We\'ll contact you soon.',
+            content: const Text(
+              'You have already submitted an application for this pet.',
             ),
-            backgroundColor: Color(0xFF4ECDC4),
-            duration: Duration(seconds: 3),
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
+        return;
+      }
+
+      await _adoptionService.submitAdoptionApplication(
+        petId: widget.petId,
+        petName: widget.petName,
+        shelterId: widget.shelterId,
+        applicantName: _nameController.text.trim(),
+        applicantEmail: _emailController.text.trim(),
+        applicantPhone: _phoneController.text.trim(),
+        applicantAddress: _addressController.text.trim(),
+        housingType: _housingType,
+        hasGarden: _hasGarden,
+        hasExistingPets: _hasExistingPets,
+        experienceLevel: _experienceLevel,
+        additionalNotes: _notesController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Application submitted successfully!'),
+          backgroundColor: Theme.of(context).colorScheme.tertiary,
+        ),
+      );
+
+      Navigator.of(context).pop();
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to submit application: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
+  }
+
+  void _showEmailVerificationRequired() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(
+              Icons.email_outlined,
+              color: Theme.of(context).colorScheme.primary,
+              size: 28,
+            ),
+            SizedBox(width: 3.w),
+            const Expanded(child: Text('Email Verification Required')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'You must verify your email address before submitting adoption applications.',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            SizedBox(height: 2.h),
+            const Text(
+              'Please check your email for the verification link we sent when you registered.',
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              'After verifying your email, you can submit applications to adopt pets.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 12.sp,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              try {
+                await _authService.resendVerificationEmail();
+                if (!mounted) return;
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Verification email sent!'),
+                    backgroundColor: Theme.of(context).colorScheme.tertiary,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to resend email: $e'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+              }
+            },
+            child: const Text('Resend Email'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -65,48 +215,96 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
     return Container(
       height: 85.h,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20.0)),
+        color: theme.scaffoldBackgroundColor,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(6.w)),
       ),
       child: Column(
         children: [
+          SizedBox(height: 1.h),
           Container(
-            padding: EdgeInsets.symmetric(vertical: 2.h),
+            width: 12.w,
+            height: 0.5.h,
             decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  width: 1,
-                ),
-              ),
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(1.h),
             ),
-            child: Column(
+          ),
+          Padding(
+            padding: EdgeInsets.all(5.w),
+            child: Row(
               children: [
-                Container(
-                  width: 10.w,
-                  height: 0.5.h,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(4.0),
+                Expanded(
+                  child: Text(
+                    'Adoption Application',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-                SizedBox(height: 1.5.h),
-                Text(
-                  'Adopt ${widget.petName}',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: CustomIconWidget(
+                    iconName: 'close',
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 24,
                   ),
                 ),
               ],
             ),
           ),
+
+          // Email verification banner
+          if (!_isEmailVerified)
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 5.w),
+              padding: EdgeInsets.all(3.w),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.error.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: theme.colorScheme.error,
+                    size: 24,
+                  ),
+                  SizedBox(width: 3.w),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Email Verification Required',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 0.5.h),
+                        Text(
+                          'Verify your email to submit applications',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           Expanded(
             child: SingleChildScrollView(
-              padding: EdgeInsets.all(4.w),
+              padding: EdgeInsets.all(5.w),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
                       'Contact Information',
@@ -209,23 +407,24 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                         ),
                         prefixIcon: Icon(Icons.apartment_outlined),
                       ),
-                      items: ['House', 'Apartment', 'Condo', 'Other']
-                          .map(
-                            (type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type),
-                            ),
-                          )
-                          .toList(),
+                      items: [
+                        DropdownMenuItem(value: 'house', child: Text('House')),
+                        DropdownMenuItem(
+                          value: 'apartment',
+                          child: Text('Apartment'),
+                        ),
+                        DropdownMenuItem(value: 'condo', child: Text('Condo')),
+                        DropdownMenuItem(value: 'other', child: Text('Other')),
+                      ],
                       onChanged: (value) {
                         setState(() {
-                          _housingType = value ?? 'House';
+                          _housingType = value ?? 'house';
                         });
                       },
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      initialValue: _hasGarden,
+                      initialValue: _hasGarden ? 'Yes' : 'No',
                       decoration: InputDecoration(
                         labelText: 'Do you have a garden/yard?',
                         border: OutlineInputBorder(
@@ -243,7 +442,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                           .toList(),
                       onChanged: (value) {
                         setState(() {
-                          _hasGarden = value ?? 'Yes';
+                          _hasGarden = value == 'Yes';
                         });
                       },
                     ),
@@ -303,83 +502,47 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                         });
                       },
                     ),
+                    SizedBox(height: 2.h),
+                    TextFormField(
+                      controller: _notesController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Additional Notes (Optional)',
+                        hintText:
+                            'Tell us why you would be a great fit for ${widget.petName}',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        prefixIcon: Icon(Icons.notes_outlined),
+                      ),
+                    ),
                     SizedBox(height: 3.h),
+                    SizedBox(
+                      height: 6.h,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _handleSubmit,
+                        child: _isLoading
+                            ? SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    theme.colorScheme.onPrimary,
+                                  ),
+                                ),
+                              )
+                            : Text(
+                                'Submit Application',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: theme.colorScheme.onPrimary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.all(4.w),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: theme.shadowColor.withValues(alpha: 0.08),
-                  offset: Offset(0, -2),
-                  blurRadius: 8,
-                  spreadRadius: 0,
-                ),
-              ],
-            ),
-            child: SafeArea(
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(vertical: 1.8.h),
-                        side: BorderSide(
-                          color: theme.colorScheme.primary,
-                          width: 1.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 3.w),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submitForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.colorScheme.primary,
-                        foregroundColor: theme.colorScheme.onPrimary,
-                        padding: EdgeInsets.symmetric(vertical: 1.8.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: _isSubmitting
-                          ? SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: theme.colorScheme.onPrimary,
-                              ),
-                            )
-                          : Text(
-                              'Submit Application',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.onPrimary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                    ),
-                  ),
-                ],
               ),
             ),
           ),
