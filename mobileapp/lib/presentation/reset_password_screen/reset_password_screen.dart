@@ -3,32 +3,27 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/auth_service.dart';
-import '../../widgets/custom_icon_widget.dart';
 
-/// Register Screen for new user account creation with Supabase auth
-/// Implements email verification flow with real-time feedback
-/// Sends verification email automatically on successful registration
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+/// Reset Password Screen for setting a new password after clicking reset link
+/// Implements password strength validation matching the register screen
+class ResetPasswordScreen extends StatefulWidget {
+  const ResetPasswordScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService.instance;
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _termsAccepted = false;
   bool _isLoading = false;
 
   // Validation states
-  bool _emailValid = false;
   bool _passwordValid = false;
   bool _confirmPasswordValid = false;
 
@@ -39,16 +34,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
-  }
-
-  void _validateEmail(String value) {
-    setState(() {
-      _emailValid = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value);
-    });
   }
 
   void _validatePassword(String value) {
@@ -73,28 +61,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   bool get _isFormValid {
-    return _emailValid &&
-        _passwordValid &&
-        _confirmPasswordValid &&
-        _termsAccepted;
+    return _passwordValid && _confirmPasswordValid;
   }
 
-  Future<void> _handleRegister() async {
+  Future<void> _handleResetPassword() async {
     if (!_isFormValid) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // Register user with Supabase
-      await _authService.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _emailController.text.split('@')[0],
+      await _authService.updatePassword(
+        newPassword: _passwordController.text,
       );
 
       if (!mounted) return;
 
-      // Show verification email sent message
+      // Show success message and navigate to login
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -102,50 +84,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
           title: Row(
             children: [
               Icon(
-                Icons.mark_email_read,
+                Icons.check_circle,
                 color: Theme.of(context).colorScheme.tertiary,
                 size: 28,
               ),
               SizedBox(width: 3.w),
-              const Expanded(child: Text('Verify Your Email')),
+              const Expanded(child: Text('Password Updated')),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'A verification link has been sent to:',
-                style: TextStyle(fontWeight: FontWeight.w500),
-              ),
-              SizedBox(height: 1.h),
-              Container(
-                padding: EdgeInsets.all(2.w),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  _emailController.text.trim(),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              SizedBox(height: 2.h),
-              const Text(
-                'Please check your email and click the verification link to activate your account.',
-              ),
-              SizedBox(height: 1.h),
-              Text(
-                'After verification, you can log in to start browsing pets.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 12.sp,
-                ),
-              ),
-            ],
+          content: const Text(
+            'Your password has been successfully updated. You can now log in with your new password.',
           ),
           actions: [
             TextButton(
@@ -154,7 +102,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 Navigator.of(
                   context,
                   rootNavigator: true,
-                ).pushReplacementNamed('/login-screen');
+                ).pushNamedAndRemoveUntil(
+                  AppRoutes.login,
+                  (route) => false,
+                );
               },
               child: const Text('Go to Login'),
             ),
@@ -164,12 +115,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      String errorMessage = 'Registration failed. Please try again.';
-      if (e.toString().contains('already registered')) {
-        errorMessage =
-            'This email is already registered. Please login instead.';
-      } else if (e.toString().contains('invalid email')) {
-        errorMessage = 'Please enter a valid email address.';
+      String errorMessage = 'Failed to update password. Please try again.';
+      if (e.toString().contains('same as')) {
+        errorMessage = 'New password must be different from your current password.';
+      } else if (e.toString().contains('expired')) {
+        errorMessage = 'The reset link has expired. Please request a new one.';
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -203,7 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: Text('Create Account', style: theme.appBarTheme.titleTextStyle),
+        title: Text('Reset Password', style: theme.appBarTheme.titleTextStyle),
         centerTitle: true,
         elevation: 0,
       ),
@@ -219,9 +169,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   SizedBox(height: 2.h),
 
-                  // Welcome message
+                  // Header message
                   Text(
-                    'Join Paws',
+                    'Create New Password',
                     style: theme.textTheme.headlineMedium?.copyWith(
                       color: theme.colorScheme.onSurface,
                     ),
@@ -229,7 +179,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   SizedBox(height: 1.h),
                   Text(
-                    'Create an account to start finding your perfect pet companion',
+                    'Please enter your new password below. Make sure it meets all the requirements.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -238,50 +188,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   SizedBox(height: 4.h),
 
-                  // Email field
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    onChanged: _validateEmail,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      hintText: 'Enter your email address',
-                      prefixIcon: Padding(
-                        padding: EdgeInsets.all(3.w),
-                        child: CustomIconWidget(
-                          iconName: 'email',
-                          color: theme.colorScheme.onSurfaceVariant,
-                          size: 20,
-                        ),
-                      ),
-                      suffixIcon: _emailController.text.isNotEmpty
-                          ? Padding(
-                              padding: EdgeInsets.all(3.w),
-                              child: CustomIconWidget(
-                                iconName: _emailValid
-                                    ? 'check_circle'
-                                    : 'cancel',
-                                color: _emailValid
-                                    ? theme.colorScheme.tertiary
-                                    : theme.colorScheme.error,
-                                size: 20,
-                              ),
-                            )
-                          : null,
-                    ),
-                  ),
-
-                  SizedBox(height: 3.h),
-
-                  // Password field
+                  // New password field
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.next,
                     onChanged: _validatePassword,
                     decoration: InputDecoration(
-                      labelText: 'Password',
+                      labelText: 'New Password',
                       hintText: 'Create a strong password',
                       prefixIcon: Padding(
                         padding: EdgeInsets.all(3.w),
@@ -401,68 +315,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
 
-                  SizedBox(height: 3.h),
-
-                  // Terms and conditions
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 24,
-                        width: 24,
-                        child: Checkbox(
-                          value: _termsAccepted,
-                          onChanged: (value) {
-                            setState(() => _termsAccepted = value ?? false);
-                          },
-                        ),
-                      ),
-                      SizedBox(width: 3.w),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            setState(() => _termsAccepted = !_termsAccepted);
-                          },
-                          child: RichText(
-                            text: TextSpan(
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              children: [
-                                const TextSpan(text: 'I agree to the '),
-                                TextSpan(
-                                  text: 'Terms of Service',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                                const TextSpan(text: ' and '),
-                                TextSpan(
-                                  text: 'Privacy Policy',
-                                  style: TextStyle(
-                                    color: theme.colorScheme.primary,
-                                    fontWeight: FontWeight.w600,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
                   SizedBox(height: 4.h),
 
-                  // Register button
+                  // Reset password button
                   SizedBox(
                     height: 6.h,
                     child: ElevatedButton(
                       onPressed: _isFormValid && !_isLoading
-                          ? _handleRegister
+                          ? _handleResetPassword
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _isFormValid
@@ -488,7 +348,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               ),
                             )
                           : Text(
-                              'Create Account',
+                              'Update Password',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: _isFormValid
                                     ? theme.colorScheme.onPrimary
@@ -501,12 +361,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   SizedBox(height: 3.h),
 
-                  // Login link
+                  // Back to login link
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Already have an account? ',
+                        'Remember your password? ',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -516,7 +376,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           Navigator.of(
                             context,
                             rootNavigator: true,
-                          ).pushReplacementNamed('/login-screen');
+                          ).pushNamedAndRemoveUntil(
+                            AppRoutes.login,
+                            (route) => false,
+                          );
                         },
                         child: Text(
                           'Log In',
