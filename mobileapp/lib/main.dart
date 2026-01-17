@@ -1,12 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_export.dart';
 import '../widgets/custom_error_widget.dart';
+import './services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase
+  try {
+    await SupabaseService.initialize();
+  } catch (e) {
+    debugPrint('Failed to initialize Supabase: $e');
+  }
 
   bool hasShownError = false;
 
@@ -33,14 +44,51 @@ void main() async {
   });
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupAuthListener();
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupAuthListener() {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (AuthState data) {
+        final event = data.event;
+
+        // Handle password recovery event (user clicked reset link in email)
+        if (event == AuthChangeEvent.passwordRecovery) {
+          _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+            AppRoutes.resetPassword,
+            (route) => false,
+          );
+        }
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Sizer(
       builder: (context, orientation, screenType) {
         return MaterialApp(
+          navigatorKey: _navigatorKey,
           title: 'paws',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
