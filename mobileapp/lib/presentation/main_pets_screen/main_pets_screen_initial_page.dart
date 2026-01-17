@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../services/pet_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/preference_service.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/empty_state_widget.dart';
+import './widgets/filter_modal_widget.dart';
 import './widgets/pet_card_widget.dart';
 
 class MainPetsScreenInitialPage extends StatefulWidget {
@@ -16,176 +21,126 @@ class MainPetsScreenInitialPage extends StatefulWidget {
       _MainPetsScreenInitialPageState();
 }
 
-class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
+class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
+    with WidgetsBindingObserver {
   final CardSwiperController _cardController = CardSwiperController();
-  bool _showUndoButton = false;
+  final PetService _petService = PetService();
+  final AuthService _authService = AuthService();
+  final PreferenceService _preferenceService = PreferenceService();
+
   bool _isLoading = true;
   int _currentCardIndex = 0;
+  List<Map<String, dynamic>> _petData = [];
+  final List<String> _undoQueue = [];
+  static const int maxUndoQueueSize = 5;
+  String? _currentUserId;
+  String? _errorMessage;
+  bool _isProcessingSwipe = false;
 
-  final List<Map<String, dynamic>> _petData = [
-    {
-      "id": 1,
-      "name": "Luna",
-      "age": "2 years",
-      "breed": "Golden Retriever",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-      "semanticLabel":
-          "Golden Retriever dog with fluffy golden fur sitting outdoors in natural lighting",
-      "bio":
-          "Luna is a friendly and energetic Golden Retriever who loves playing fetch and swimming. She's great with children and other pets.",
-      "healthStatus": "Vaccinated, Spayed, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-          "semanticLabel":
-              "Golden Retriever dog with fluffy golden fur sitting outdoors in natural lighting",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1632366941290-f3248eb1699f",
-          "semanticLabel":
-              "Golden Retriever puppy lying on grass with tongue out",
-        },
-      ],
-    },
-    {
-      "id": 2,
-      "name": "Max",
-      "age": "3 years",
-      "breed": "Labrador",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1507270603269-dbbf5099b47c",
-      "semanticLabel":
-          "Black Labrador dog with shiny coat sitting attentively with alert expression",
-      "bio":
-          "Max is a loyal and intelligent Labrador who enjoys long walks and training sessions. He's well-behaved and house-trained.",
-      "healthStatus": "Vaccinated, Neutered, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1507270603269-dbbf5099b47c",
-          "semanticLabel":
-              "Black Labrador dog with shiny coat sitting attentively with alert expression",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1575493125700-d31ebbc72b09",
-          "semanticLabel":
-              "Black Labrador running through water with joyful expression",
-        },
-      ],
-    },
-    {
-      "id": 3,
-      "name": "Bella",
-      "age": "1 year",
-      "breed": "Persian Cat",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1612801143784-84b527938e53",
-      "semanticLabel":
-          "White Persian cat with fluffy fur and blue eyes looking directly at camera",
-      "bio":
-          "Bella is a gentle and affectionate Persian cat who loves cuddles and quiet environments. She's perfect for apartment living.",
-      "healthStatus": "Vaccinated, Spayed, Dewormed",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1612801143784-84b527938e53",
-          "semanticLabel":
-              "White Persian cat with fluffy fur and blue eyes looking directly at camera",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1575408824052-8f497497f04b",
-          "semanticLabel": "White Persian cat grooming itself on soft blanket",
-        },
-      ],
-    },
-    {
-      "id": 4,
-      "name": "Charlie",
-      "age": "4 years",
-      "breed": "Beagle",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1603088839340-d73e99dd831a",
-      "semanticLabel":
-          "Beagle dog with brown and white coat sitting on wooden deck with curious expression",
-      "bio":
-          "Charlie is a playful and curious Beagle with a great sense of smell. He loves outdoor adventures and exploring new places.",
-      "healthStatus": "Vaccinated, Neutered, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1603088839340-d73e99dd831a",
-          "semanticLabel":
-              "Beagle dog with brown and white coat sitting on wooden deck with curious expression",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1548980939-59b205ca539d",
-          "semanticLabel":
-              "Beagle dog running through autumn leaves with happy expression",
-        },
-      ],
-    },
-    {
-      "id": 5,
-      "name": "Daisy",
-      "age": "2 years",
-      "breed": "Siamese Cat",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1709262315195-3254daf9068c",
-      "semanticLabel":
-          "Siamese cat with cream and brown points sitting elegantly with blue eyes",
-      "bio":
-          "Daisy is a vocal and social Siamese cat who loves attention and interactive play. She's very intelligent and learns tricks quickly.",
-      "healthStatus": "Vaccinated, Spayed, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1709262315195-3254daf9068c",
-          "semanticLabel":
-              "Siamese cat with cream and brown points sitting elegantly with blue eyes",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1624268898688-2e745a947348",
-          "semanticLabel": "Siamese cat playing with toy on carpet",
-        },
-      ],
-    },
-    {
-      "id": 6,
-      "name": "Rocky",
-      "age": "5 years",
-      "breed": "German Shepherd",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1582660482303-0b292b0971fe",
-      "semanticLabel":
-          "German Shepherd dog with black and tan coat sitting alert with pointed ears",
-      "bio":
-          "Rocky is a protective and loyal German Shepherd who makes an excellent guard dog. He's well-trained and responds to commands.",
-      "healthStatus": "Vaccinated, Neutered, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1582660482303-0b292b0971fe",
-          "semanticLabel":
-              "German Shepherd dog with black and tan coat sitting alert with pointed ears",
-        },
-        {
-          "url":
-              "https://img.rocket.new/generatedImages/rocket_gen_img_1c0db7698-1764889533933.png",
-          "semanticLabel":
-              "German Shepherd running through field with focused expression",
-        },
-      ],
-    },
-  ];
+  // Filter state
+  Map<String, dynamic>? _savedPreferences;
+  Map<String, dynamic> _activeFilters = {};
 
   @override
   void initState() {
     super.initState();
-    _loadPets();
+    WidgetsBinding.instance.addObserver(this);
+    _initializeUser();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Reload pets when user returns to this screen
+      _loadPets();
+    }
+  }
+
+  Future<void> _initializeUser() async {
+    try {
+      final user = _authService.currentUser;
+      if (mounted) {
+        setState(() {
+          _currentUserId = user?.id;
+        });
+        // Load preferences first, then load pets with filters applied
+        await _loadPreferences();
+        _loadPets();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to initialize: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadPreferences() async {
+    if (_currentUserId == null) return;
+
+    try {
+      final prefs = await _preferenceService.getUserPreferences(_currentUserId!);
+      if (mounted && prefs != null) {
+        setState(() {
+          _savedPreferences = prefs;
+          // Initialize active filters from saved preferences
+          _activeFilters = {
+            'speciesFilter': prefs['preferred_pet_types'] ?? [],
+            'hasGarden': prefs['has_garden'],
+            'hasChildren': prefs['hasChildren'],
+            'hasOtherPets': prefs['has_other_pets'],
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load preferences: $e');
+    }
   }
 
   Future<void> _loadPets() async {
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) {
+    try {
       setState(() {
-        _isLoading = false;
+        _isLoading = true;
+        _errorMessage = null;
       });
+
+      // Extract filter values
+      final speciesFilter = _activeFilters['speciesFilter'] as List?;
+      final hasGarden = _activeFilters['hasGarden'] as bool?;
+      final hasChildren = _activeFilters['hasChildren'] as bool?;
+      final hasOtherPets = _activeFilters['hasOtherPets'] as bool?;
+
+      final pets = await _petService.getAvailablePets(
+        userId: _currentUserId,
+        speciesFilter: speciesFilter != null && speciesFilter.isNotEmpty
+            ? List<String>.from(speciesFilter)
+            : null,
+        hasGarden: hasGarden,
+        hasChildren: hasChildren,
+        hasOtherPets: hasOtherPets,
+      );
+
+      if (mounted) {
+        setState(() {
+          _petData = pets;
+          _isLoading = false;
+          _currentCardIndex = 0;
+          _undoQueue.clear();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Failed to load pets: $e';
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load pets: $e')));
+      }
     }
   }
 
@@ -198,12 +153,35 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
     int? currentIndex,
     CardSwiperDirection direction,
   ) {
+    // Only allow left and right swipes
+    if (direction != CardSwiperDirection.left &&
+        direction != CardSwiperDirection.right) {
+      return false;
+    }
+
+    // Prevent swiping beyond available pets
+    if (previousIndex >= _petData.length) {
+      return false;
+    }
+
+    // Prevent multiple simultaneous swipes
+    if (_isProcessingSwipe) {
+      return false;
+    }
+
+    final pet = _petData[previousIndex];
+    final petId = pet['id'] as String;
+
+    // Add to undo queue
+    if (_undoQueue.length >= maxUndoQueueSize) {
+      _undoQueue.removeAt(0);
+    }
+    _undoQueue.add(petId);
+
     if (direction == CardSwiperDirection.right) {
-      HapticFeedback.lightImpact();
-      _showUndoButtonTemporarily();
+      _handleLike(petId);
     } else if (direction == CardSwiperDirection.left) {
-      HapticFeedback.lightImpact();
-      _showUndoButtonTemporarily();
+      _handleSkip(petId);
     }
 
     if (currentIndex != null) {
@@ -212,28 +190,177 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       });
     }
 
-    return true; // Allow the swipe
+    HapticFeedback.lightImpact();
+    return true;
   }
 
-  void _showUndoButtonTemporarily() {
+  Future<void> _handleLike(String petId) async {
+    if (_currentUserId == null) return;
+
+    try {
+      await _petService.addToFavorites(userId: _currentUserId!, petId: petId);
+      await _petService.recordInteraction(
+        userId: _currentUserId!,
+        petId: petId,
+        interactionType: 'like',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Added to favorites!'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } on PostgrestException catch (e) {
+      // Handle duplicate favorites error specifically
+      if (e.code == '23505') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This pet is already in your favorites'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add to favorites: ${e.message}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add to favorites: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleSkip(String petId) async {
+    if (_currentUserId == null) return;
+
+    try {
+      await _petService.recordInteraction(
+        userId: _currentUserId!,
+        petId: petId,
+        interactionType: 'skip',
+      );
+    } catch (e) {
+      // Silent fail for skip
+    }
+  }
+
+  Future<void> _handleLikeButton() async {
+    if (_currentCardIndex >= _petData.length || _isProcessingSwipe) return;
+
     setState(() {
-      _showUndoButton = true;
+      _isProcessingSwipe = true;
     });
 
-    Future.delayed(const Duration(seconds: 3), () {
+    try {
+      final pet = _petData[_currentCardIndex];
+      final petId = pet['id'] as String;
+
+      // Perform database operations FIRST
+      await _petService.addToFavorites(userId: _currentUserId!, petId: petId);
+      await _petService.recordInteraction(
+        userId: _currentUserId!,
+        petId: petId,
+        interactionType: 'like',
+      );
+
+      // Only swipe if operation succeeded
+      if (mounted) {
+        _cardController.swipe(CardSwiperDirection.right);
+        HapticFeedback.mediumImpact();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Added to favorites!'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } on PostgrestException catch (e) {
+      // Handle duplicate favorites error - don't swipe the card
+      if (mounted) {
+        if (e.code == '23505') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('This pet is already in your favorites'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to add to favorites: ${e.message}')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to add to favorites: $e')),
+        );
+      }
+    } finally {
       if (mounted) {
         setState(() {
-          _showUndoButton = false;
+          _isProcessingSwipe = false;
         });
       }
-    });
+    }
   }
 
-  void _undoSwipe() {
+  Future<void> _handleSkipButton() async {
+    if (_currentCardIndex >= _petData.length || _isProcessingSwipe) return;
+
+    setState(() {
+      _isProcessingSwipe = true;
+    });
+
+    try {
+      final pet = _petData[_currentCardIndex];
+      final petId = pet['id'] as String;
+
+      // Perform database operations FIRST
+      await _petService.recordInteraction(
+        userId: _currentUserId!,
+        petId: petId,
+        interactionType: 'skip',
+      );
+
+      // Only swipe if operation succeeded
+      if (mounted) {
+        _cardController.swipe(CardSwiperDirection.left);
+        HapticFeedback.mediumImpact();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to skip: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessingSwipe = false;
+        });
+      }
+    }
+  }
+
+  void _handleUndo() {
+    if (_undoQueue.isEmpty) return;
+
     _cardController.undo();
     HapticFeedback.mediumImpact();
     setState(() {
-      _showUndoButton = false;
+      _undoQueue.removeLast();
       if (_currentCardIndex > 0) {
         _currentCardIndex--;
       }
@@ -247,8 +374,31 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
     ).pushNamed('/pet-detail-screen', arguments: pet);
   }
 
+  void _showFilterModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => FilterModalWidget(
+        currentFilters: _activeFilters,
+        savedPreferences: _savedPreferences,
+        onApply: (filters) {
+          setState(() {
+            // Merge new species filter with existing preference-based filters
+            _activeFilters = {
+              ..._activeFilters,
+              'speciesFilter': filters['speciesFilter'],
+            };
+          });
+          _loadPets();
+        },
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _cardController.dispose();
     super.dispose();
   }
@@ -286,18 +436,13 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
                 ),
               ),
               IconButton(
-                onPressed: () {
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).pushNamed('/account-management-screen');
-                },
+                onPressed: _showFilterModal,
                 icon: CustomIconWidget(
                   iconName: 'tune',
                   color: theme.colorScheme.primary,
                   size: 24,
                 ),
-                tooltip: 'Preferences',
+                tooltip: 'Filter Pets',
               ),
             ],
           ),
@@ -309,22 +454,66 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
                     color: theme.colorScheme.primary,
                   ),
                 )
-              : _currentCardIndex >= _petData.length
+              : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(4.w),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CustomIconWidget(
+                          iconName: 'error_outline',
+                          color: theme.colorScheme.error,
+                          size: 48,
+                        ),
+                        SizedBox(height: 2.h),
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        SizedBox(height: 3.h),
+                        ElevatedButton.icon(
+                          onPressed: _loadPets,
+                          icon: CustomIconWidget(
+                            iconName: 'refresh',
+                            color: theme.colorScheme.onPrimary,
+                            size: 20,
+                          ),
+                          label: const Text('Retry'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : _petData.isEmpty || _currentCardIndex >= _petData.length
               ? EmptyStateWidget(onRefresh: _refreshPets)
               : Stack(
                   children: [
                     Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 4.w,
-                        vertical: 2.h,
+                      padding: EdgeInsets.only(
+                        left: 4.w,
+                        right: 4.w,
+                        top: 2.h,
+                        bottom: 15.h, // Space for buttons
                       ),
                       child: CardSwiper(
                         controller: _cardController,
                         cardsCount: _petData.length,
                         onSwipe: _onSwipe,
-                        numberOfCardsDisplayed: 3,
+                        numberOfCardsDisplayed: _petData.length < 3
+                            ? _petData.length
+                            : 3,
                         backCardOffset: const Offset(0, 40),
                         padding: EdgeInsets.zero,
+                        allowedSwipeDirection: const AllowedSwipeDirection.only(
+                          left: true,
+                          right: true,
+                        ),
                         cardBuilder:
                             (
                               context,
@@ -340,23 +529,125 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
                             },
                       ),
                     ),
-                    if (_showUndoButton)
+
+                    // Action buttons at bottom - only visible when cards are present
+                    if (_petData.isNotEmpty &&
+                        _currentCardIndex < _petData.length)
                       Positioned(
                         bottom: 4.h,
-                        right: 4.w,
-                        child: AnimatedOpacity(
-                          opacity: _showUndoButton ? 1.0 : 0.0,
-                          duration: const Duration(milliseconds: 300),
-                          child: FloatingActionButton(
-                            onPressed: _undoSwipe,
-                            backgroundColor: theme.colorScheme.surface,
-                            elevation: 4,
-                            child: CustomIconWidget(
-                              iconName: 'undo',
-                              color: theme.colorScheme.primary,
-                              size: 24,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Skip button (X icon, round)
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.surface,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.shadowColor.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    offset: const Offset(0, 4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _handleSkipButton,
+                                  customBorder: const CircleBorder(),
+                                  child: Center(
+                                    child: CustomIconWidget(
+                                      iconName: 'close',
+                                      color: theme.colorScheme.error,
+                                      size: 32,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+
+                            SizedBox(width: 4.w),
+
+                            // Undo button (round)
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.surface,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.shadowColor.withValues(
+                                      alpha: 0.15,
+                                    ),
+                                    offset: const Offset(0, 4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _undoQueue.isNotEmpty
+                                      ? _handleUndo
+                                      : null,
+                                  customBorder: const CircleBorder(),
+                                  child: Center(
+                                    child: CustomIconWidget(
+                                      iconName: 'undo',
+                                      color: _undoQueue.isNotEmpty
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.onSurface
+                                                .withValues(alpha: 0.3),
+                                      size: 24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(width: 4.w),
+
+                            // Like button (heart icon, round)
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: theme.colorScheme.primary,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                    offset: const Offset(0, 4),
+                                    blurRadius: 12,
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _handleLikeButton,
+                                  customBorder: const CircleBorder(),
+                                  child: Center(
+                                    child: CustomIconWidget(
+                                      iconName: 'favorite',
+                                      color: theme.colorScheme.onPrimary,
+                                      size: 32,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                   ],
