@@ -246,7 +246,25 @@ CREATE TABLE scheduled_meetings ( -- se creeaza o tabela noua numita scheduled m
     UNIQUE(user_id, pet_id) -- constrangere care asigura ca un utilizator nu poate adauga acelasi animal de mai multe ori la favorite, combinatia user_id + pet_id trebuie sa fie unica in tabela
   );
 
--- 10. INDEXES FOR PERFORMANCE
+-- 10. USER SWIPES TABLE
+
+  CREATE TABLE user_swipes ( -- se creeaza o tabela noua numita user_swipes, pentru gestionarea interactiunilor tip Tinder (swipe left/right) ale utilizatorilor cu animalele
+    -- campuri pentru identificare
+    id SERIAL PRIMARY KEY, -- camp de identificare unica a swipe-ului, serial pentru ca e un nr care creste automat si primary key pentru ca e unic pentru fiecare swipe, nu pot fi doua swipe-uri cu acelasi id
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, -- foreign key, reprezinta id-ul utilizatorului din tabela users, este de tip intreg, REFERENCES users(id) pentru ca trebuie sa existe in tabela users, ON DELETE CASCADE inseamna ca daca sterg un user, se sterg automat si swipe-urile lui
+    pet_id INTEGER REFERENCES pets(id) ON DELETE CASCADE, -- foreign key, reprezinta id-ul animalului din tabela pets, este de tip intreg, REFERENCES pets(id) pentru ca trebuie sa existe in tabela pets, ON DELETE CASCADE inseamna ca daca sterg un animal, se sterge automat si din istoricul de swipe-uri
+    
+    -- actiunea utilizatorului
+    action VARCHAR(10) NOT NULL, -- camp pentru tipul actiunii ('like' sau 'pass'), de tip text de maxim 10 caractere, NOT NULL pentru ca trebuie obligatoriu completat, 'like' inseamna swipe right (interesat), 'pass' inseamna swipe left (nu e interesat)
+    
+    -- timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- camp de tip data si ora care retine cand a fost efectuat swipe-ul, CURRENT_TIMESTAMP retine exact momentul in care a fost efectuat, util pentru statistici si pentru a nu arata din nou acelasi animal userului
+    
+    -- constrangere de unicitate
+    UNIQUE(user_id, pet_id) -- constrangere care asigura ca un utilizator nu poate da swipe de mai multe ori la acelasi animal, combinatia user_id + pet_id trebuie sa fie unica in tabela, astfel animalul nu va mai aparea in feed dupa ce utilizatorul a actionat asupra lui
+);
+
+-- 11. INDEXES FOR PERFORMANCE
 -- indexes sunt structuri de date suplimentare care permit cautari rapide
 -- fara index postgreSQL scaneaza toate randurile, deci este lent pentru tabele mari
 -- cu index postgreSQL foloseste o structura sortata pentru gasire instantanee
@@ -299,7 +317,13 @@ CREATE INDEX idx_meetings_adoption_id ON scheduled_meetings(adoption_id); -- ind
 CREATE INDEX idx_meetings_date ON scheduled_meetings(scheduled_date); -- index pe scheduled_date pentru a filtra inatlnirile cronologic - WHERE scheduled_date >= CURRENT_DATE ORDER BY scheduled_date
 CREATE INDEX idx_meetings_status ON scheduled_meetings(status); -- index pe status pentru filtrarea intalnirilor dupa stare - WHERE status = '...'
 
--- 11. TRIGGERS
+-- index pentru user_swipes
+CREATE INDEX idx_user_swipes_user_id ON user_swipes(user_id); -- index pe user_id pentru gasire rapida a tuturor swipe-urilor unui utilizator - WHERE user_id = ...
+CREATE INDEX idx_user_swipes_pet_id ON user_swipes(pet_id); -- index pe pet_id pentru a vedea cati utilizatori au dat like/pass unui anumit animal - WHERE pet_id = ...
+CREATE INDEX idx_user_swipes_action ON user_swipes(action); -- index pe action pentru filtrarea dupa tipul de actiune, util pentru statistici - WHERE action = 'like'
+CREATE INDEX idx_user_swipes_user_action ON user_swipes(user_id, action); -- index compus pentru gasire rapida a tuturor like-urilor unui utilizator - WHERE user_id = ... AND action = 'like'
+
+-- 12. TRIGGERS
 
 -- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -365,6 +389,7 @@ COMMENT ON TABLE adoptions IS 'Adoption applications with extended form data';
 COMMENT ON TABLE donations IS 'Monetary donations via Stripe';
 COMMENT ON TABLE messages IS 'Simple contact messages from users to shelter';
 COMMENT ON TABLE scheduled_meetings IS 'Meeting requests linked to adoption applications';
+COMMENT ON TABLE user_swipes IS 'Tinder-style swipe interactions - tracks likes and passes to prevent showing same pets again';
 
 COMMENT ON COLUMN pets.ai_breed_detected IS 'Breed detected by CLIP AI model';
 COMMENT ON COLUMN pets.ai_confidence IS 'AI detection confidence score (0-100)';
@@ -373,6 +398,7 @@ COMMENT ON COLUMN adoptions.status IS 'pending, in_review, approved, rejected';
 COMMENT ON COLUMN donations.status IS 'pending, completed, canceled, failed';
 COMMENT ON COLUMN scheduled_meetings.status IS 'pending, accepted, rejected';
 COMMENT ON COLUMN messages.message IS 'Limited to 1800 characters';
+COMMENT ON COLUMN user_swipes.action IS 'like (swipe right - interested) or pass (swipe left - not interested)';
 
 -- =====================================================
 -- INITIAL ADMIN USER (Optional - for testing)
