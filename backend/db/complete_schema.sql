@@ -232,7 +232,21 @@ CREATE TABLE scheduled_meetings ( -- se creeaza o tabela noua numita scheduled m
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- camp de tip data si ora care retine cand a fost realizata ultima actualizare, se modifica automat prin trigger
 );
 
--- 9. INDEXES FOR PERFORMANCE
+-- 9. FAVORITES TABLE
+  CREATE TABLE favorites ( -- se creeaza o tabela noua numita favorites
+    -- campuri pentru identificare
+    id SERIAL PRIMARY KEY, -- camp de identificare unica a favoritului, serial pentru ca e un nr care creste automat si primary key pentru ca e unic pentru fiecare favorit, nu pot fi doua favorite cu acelasi id
+    user_id INTEGER REFERENCES users(id), -- foreign key, reprezinta id-ul utilizatorului din tabela users, este de tip intreg, REFERENCES users(id) pentru ca trebuie sa existe in tabela users, ON DELETE CASCADE inseamna ca daca sterg un user, se sterg automat si favoritele lui
+    pet_id INTEGER REFERENCES pets(id), -- foreign key, reprezinta id-ul animalului din tabela pets, este de tip intreg, REFERENCES pets(id) pentru ca trebuie sa existe in tabela pets, ON DELETE CASCADE inseamna ca daca sterg un animal, se sterge automat si din listele de favorite
+
+    -- timestamps
+    created_at TIMESTAMP DEFAULT NOW(), -- camp de tip data si ora care retine cand a fost adaugat animalul la favorite, CURRENT_TIMESTAMP retine exact momentul in care a fost adaugat, util pentru sortare cronologica
+
+    -- constrangere de unicitate
+    UNIQUE(user_id, pet_id) -- constrangere care asigura ca un utilizator nu poate adauga acelasi animal de mai multe ori la favorite, combinatia user_id + pet_id trebuie sa fie unica in tabela
+  );
+
+-- 10. INDEXES FOR PERFORMANCE
 -- indexes sunt structuri de date suplimentare care permit cautari rapide
 -- fara index postgreSQL scaneaza toate randurile, deci este lent pentru tabele mari
 -- cu index postgreSQL foloseste o structura sortata pentru gasire instantanee
@@ -285,7 +299,7 @@ CREATE INDEX idx_meetings_adoption_id ON scheduled_meetings(adoption_id); -- ind
 CREATE INDEX idx_meetings_date ON scheduled_meetings(scheduled_date); -- index pe scheduled_date pentru a filtra inatlnirile cronologic - WHERE scheduled_date >= CURRENT_DATE ORDER BY scheduled_date
 CREATE INDEX idx_meetings_status ON scheduled_meetings(status); -- index pe status pentru filtrarea intalnirilor dupa stare - WHERE status = '...'
 
--- 10. TRIGGERS
+-- 11. TRIGGERS
 
 -- Auto-update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
