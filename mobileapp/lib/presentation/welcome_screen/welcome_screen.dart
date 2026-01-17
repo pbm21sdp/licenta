@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/app_export.dart';
 
 /// Minimalist Welcome Screen
 /// Clean design with pet illustration and teal accent buttons
@@ -64,8 +63,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 theme: theme,
                 label: 'Get Started',
                 onPressed: () {
-                  Navigator.of(context, rootNavigator: true)
-                      .pushNamed('/register-screen');
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).pushNamed('/register-screen');
                 },
               ),
 
@@ -76,8 +77,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 theme: theme,
                 label: 'Login',
                 onPressed: () {
-                  Navigator.of(context, rootNavigator: true)
-                      .pushNamed('/login-screen');
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).pushNamed('/login-screen');
                 },
               ),
 
@@ -104,12 +107,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             width: 120.w,
             height: 120.w,
             decoration: BoxDecoration(
-              color: const Color(0xFFB2DFDB).withOpacity(0.15),
+              color: const Color(0xFFB2DFDB).withAlpha(38),
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Image.asset(
-                'assets/images/icon__1_.png', // Your pet artwork
+                'assets/images/icon__1_-1768327533538.png', // Updated pet icon
                 width: 95.w,
                 height: 95.w,
                 fit: BoxFit.contain,
@@ -168,10 +171,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
