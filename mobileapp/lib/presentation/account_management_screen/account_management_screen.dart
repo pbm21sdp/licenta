@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/app_export.dart';
+import '../../services/notification_service.dart';
+import '../../services/adoption_service.dart';
+import '../../services/auth_service.dart';
+import '../../services/pet_service.dart';
+import '../../services/preference_service.dart';
 import '../../widgets/custom_image_widget.dart';
 import './widgets/adoption_status_tracking_widget.dart';
 import './widgets/application_history_card_widget.dart';
+import './widgets/notification_bell_widget.dart';
+import './widgets/notification_list_widget.dart';
 import './widgets/preference_editor_modal_widget.dart';
 import './widgets/saved_preferences_card_widget.dart';
 import './widgets/settings_section_widget.dart';
@@ -12,7 +20,7 @@ import './widgets/user_profile_header_widget.dart';
 
 /// Account Management Screen - Comprehensive user profile and preference management
 /// Accessible via bottom tab navigation (Profile tab)
-/// Features: Profile display, preference editing, application history, adoption tracking, settings
+/// Features: Profile display, preference editing, application history, adoption tracking, settings, real-time notifications
 class AccountManagementScreen extends StatefulWidget {
   const AccountManagementScreen({super.key});
 
@@ -23,6 +31,15 @@ class AccountManagementScreen extends StatefulWidget {
 
 class _AccountManagementScreenState extends State<AccountManagementScreen> {
   bool _isLoading = false;
+  final NotificationService _notificationService = NotificationService();
+  final AdoptionService _adoptionService = AdoptionService();
+  final AuthService _authService = AuthService.instance;
+  final PetService _petService = PetService();
+  final PreferenceService _preferenceService = PreferenceService();
+  RealtimeChannel? _notificationChannel;
+  int _unreadCount = 0;
+  List<Map<String, dynamic>> _notifications = [];
+  List<Map<String, dynamic>> _applicationHistory = [];
 
   // User profile data
   final Map<String, dynamic> _userProfile = {
@@ -35,93 +52,301 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         "Profile photo of woman with brown hair smiling at camera",
   };
 
-  // Saved preferences from onboarding
+  // Saved preferences - will be loaded from database
   Map<String, dynamic> _savedPreferences = {
-    "petType": "Dog",
-    "gardenAccess": "Yes, Private Garden",
-    "hasChildren": true,
-    "childrenAgeRange": "6-12 years",
-    "existingPets": ["Dog", "Cat"],
-    "petCounts": {"Dog": 1, "Cat": 1},
+    "petType": null,
+    "gardenAccess": null,
+    "hasChildren": false,
+    "childrenAgeRange": null,
+    "existingPets": <String>[],
+    "petCounts": <String, int>{},
   };
-
-  // Application history data
-  final List<Map<String, dynamic>> _applicationHistory = [
-    {
-      "id": 1,
-      "petName": "Luna",
-      "petImage":
-          "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-      "petImageSemanticLabel":
-          "Golden Retriever dog with fluffy golden fur sitting outdoors",
-      "applicationDate": DateTime.now().subtract(Duration(days: 3)),
-      "status": "Pending",
-      "statusColor": Color(0xFFFFE66D),
-      "shelterName": "Happy Paws Shelter",
-      "shelterContact": "(555) 123-4567",
-      "estimatedResponse": "2-3 business days",
-      "timeline": [
-        {"step": "Application Submitted", "completed": true},
-        {"step": "Under Review", "completed": true},
-        {"step": "Shelter Contact", "completed": false},
-        {"step": "Home Visit", "completed": false},
-        {"step": "Approval Decision", "completed": false},
-      ],
-    },
-    {
-      "id": 2,
-      "petName": "Max",
-      "petImage":
-          "https://images.unsplash.com/photo-1652032252208-676df67e89f2",
-      "petImageSemanticLabel":
-          "Black Labrador dog with shiny coat sitting on grass",
-      "applicationDate": DateTime.now().subtract(Duration(days: 15)),
-      "status": "Approved",
-      "statusColor": Color(0xFF4ECDC4),
-      "shelterName": "Loving Hearts Animal Rescue",
-      "shelterContact": "(555) 987-6543",
-      "estimatedResponse": "Approved - Schedule pickup",
-      "timeline": [
-        {"step": "Application Submitted", "completed": true},
-        {"step": "Under Review", "completed": true},
-        {"step": "Shelter Contact", "completed": true},
-        {"step": "Home Visit", "completed": true},
-        {"step": "Approval Decision", "completed": true},
-      ],
-    },
-    {
-      "id": 3,
-      "petName": "Bella",
-      "petImage":
-          "https://images.unsplash.com/photo-1706534887625-f37ae2832c30",
-      "petImageSemanticLabel":
-          "Beagle dog with brown and white coat sitting on grass",
-      "applicationDate": DateTime.now().subtract(Duration(days: 30)),
-      "status": "Declined",
-      "statusColor": Color(0xFFFF8E8E),
-      "shelterName": "Furry Friends Foundation",
-      "shelterContact": "(555) 456-7890",
-      "estimatedResponse": "Not approved - See feedback",
-      "timeline": [
-        {"step": "Application Submitted", "completed": true},
-        {"step": "Under Review", "completed": true},
-        {"step": "Shelter Contact", "completed": true},
-        {"step": "Home Visit", "completed": false},
-        {"step": "Approval Decision", "completed": true},
-      ],
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
+    _setupNotifications();
+    _loadAdoptionHistory();
+    _loadSavedPreferences();
+  }
+
+  Future<void> _loadSavedPreferences() async {
+    final userId = _authService.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final prefs = await _preferenceService.getUserPreferences(userId);
+      if (mounted && prefs != null) {
+        setState(() {
+          _savedPreferences = {
+            'petType': prefs['petType'],
+            'gardenAccess': prefs['gardenAccess'],
+            'hasChildren': prefs['hasChildren'] ?? false,
+            'childrenAgeRange': prefs['childrenAgeRange'],
+            'existingPets': prefs['existingPets'] ?? [],
+            'petCounts': prefs['petCounts'] ?? {},
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load preferences: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_notificationChannel != null) {
+      _notificationService.unsubscribe(_notificationChannel!);
+    }
+    super.dispose();
+  }
+
+  Future<void> _setupNotifications() async {
+    try {
+      // Fetch initial notifications
+      await _loadNotifications();
+
+      // Subscribe to real-time updates
+      _notificationChannel = _notificationService.subscribeToNotifications(
+        userEmail: _userProfile['email'] as String,
+        onNotification: (notification) {
+          setState(() {
+            _notifications.insert(0, notification);
+            _unreadCount++;
+          });
+
+          // Show snackbar for new notification
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.notifications_active, color: Colors.white),
+                    SizedBox(width: 3.w),
+                    Expanded(
+                      child: Text(
+                        notification['title'] as String,
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                duration: Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: 'VIEW',
+                  textColor: Colors.white,
+                  onPressed: () => _showNotifications(),
+                ),
+              ),
+            );
+          }
+        },
+      );
+    } catch (error) {
+      debugPrint('Error setting up notifications: $error');
+    }
+  }
+
+  Future<void> _loadNotifications() async {
+    try {
+      final notifications = await _notificationService.getNotifications(
+        _userProfile['email'] as String,
+      );
+      final unreadCount = await _notificationService.getUnreadCount(
+        _userProfile['email'] as String,
+      );
+
+      setState(() {
+        _notifications = notifications;
+        _unreadCount = unreadCount;
+      });
+    } catch (error) {
+      debugPrint('Error loading notifications: $error');
+    }
+  }
+
+  void _showNotifications() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NotificationListWidget(
+        notifications: _notifications,
+        onMarkAsRead: (notificationId) async {
+          try {
+            await _notificationService.markAsRead(notificationId);
+            await _loadNotifications();
+          } catch (error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to mark as read: $error'),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
+            }
+          }
+        },
+        onMarkAllAsRead: () async {
+          try {
+            await _notificationService.markAllAsRead(
+              _userProfile['email'] as String,
+            );
+            await _loadNotifications();
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('All notifications marked as read'),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                ),
+              );
+            }
+          } catch (error) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to mark all as read: $error'),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _loadAdoptionHistory() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final applications = await _adoptionService.getUserAdoptionHistory();
+
+      // Transform database data to UI format
+      final List<Map<String, dynamic>> formattedHistory = [];
+
+      for (final app in applications) {
+        // Fetch pet details if we have pet_id
+        Map<String, dynamic>? petDetails;
+        if (app['pet_id'] != null) {
+          try {
+            // Use getAvailablePets to fetch pet details
+            final pets = await _petService.getAvailablePets();
+            petDetails = pets.firstWhere(
+              (pet) => pet['id'] == app['pet_id'],
+              orElse: () => {},
+            );
+            if (petDetails.isEmpty ?? true) petDetails = null;
+          } catch (e) {
+            debugPrint('Failed to fetch pet details: $e');
+          }
+        }
+
+        final status = _formatStatus(app['application_status'] as String);
+
+        formattedHistory.add({
+          "id": app['id'],
+          "petName": app['pet_name'],
+          "petImage":
+              petDetails?['image_url'] ??
+              "https://images.unsplash.com/photo-1507270603269-db9a0c1c1cea",
+          "petImageSemanticLabel":
+              petDetails?['image_semantic_label'] ?? "Pet image",
+          "applicationDate": DateTime.parse(app['submitted_at'] as String),
+          "status": status['label'],
+          "statusColor": status['color'],
+          "shelterName": "Pet Shelter",
+          "shelterContact": app['applicant_phone'] ?? "Contact shelter",
+          "estimatedResponse": _getEstimatedResponse(
+            app['application_status'] as String,
+          ),
+          "timeline": _buildTimeline(app['application_status'] as String),
+        });
+      }
+
+      setState(() {
+        _applicationHistory = formattedHistory;
+        _isLoading = false;
+      });
+    } catch (error) {
+      debugPrint('Error loading adoption history: $error');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Map<String, dynamic> _formatStatus(String status) {
+    switch (status) {
+      case 'pending':
+        return {'label': 'Pending', 'color': Color(0xFFFFE66D)};
+      case 'under_review':
+        return {'label': 'Under Review', 'color': Color(0xFF64B5F6)};
+      case 'interview':
+        return {'label': 'Interview', 'color': Color(0xFF9C27B0)};
+      case 'approved':
+        return {'label': 'Approved', 'color': Color(0xFF4ECDC4)};
+      case 'rejected':
+        return {'label': 'Rejected', 'color': Color(0xFFFF8E8E)};
+      case 'withdrawn':
+        return {'label': 'Withdrawn', 'color': Color(0xFF9E9E9E)};
+      default:
+        return {'label': status, 'color': Color(0xFF9E9E9E)};
+    }
+  }
+
+  String _getEstimatedResponse(String status) {
+    switch (status) {
+      case 'pending':
+        return '2-3 business days';
+      case 'under_review':
+        return 'Under review by shelter';
+      case 'interview':
+        return 'Interview scheduled - shelter will contact you';
+      case 'approved':
+        return 'Approved - Contact shelter to schedule pickup';
+      case 'rejected':
+        return 'Application not approved';
+      case 'withdrawn':
+        return 'Application withdrawn';
+      default:
+        return 'Contact shelter for details';
+    }
+  }
+
+  List<Map<String, dynamic>> _buildTimeline(String status) {
+    // Special case for withdrawn applications
+    if (status == 'withdrawn') {
+      return [
+        {"step": "Application Submitted", "completed": true},
+        {"step": "Withdrawn", "completed": true},
+      ];
+    }
+
+    // Normal flow: Application Submitted -> Under Review -> Interview -> Approved/Rejected
+    return [
+      {"step": "Application Submitted", "completed": true},
+      {"step": "Under Review", "completed": status != 'pending'},
+      {
+        "step": "Interview",
+        "completed":
+            status == 'interview' ||
+            status == 'approved' ||
+            status == 'rejected',
+      },
+      {
+        "step": status == 'approved'
+            ? 'Approved'
+            : (status == 'rejected' ? 'Rejected' : 'Decision'),
+        "completed": status == 'approved' || status == 'rejected',
+      },
+    ];
   }
 
   Future<void> _refreshData() async {
     setState(() {
       _isLoading = true;
     });
-    await Future.delayed(Duration(seconds: 1));
+    await Future.wait([_loadNotifications(), _loadAdoptionHistory()]);
     setState(() {
       _isLoading = false;
     });
@@ -143,20 +368,118 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => PreferenceEditorModalWidget(
         currentPreferences: _savedPreferences,
-        onSave: (updatedPreferences) {
+        onSave: (updatedPreferences) async {
           setState(() {
             _savedPreferences = updatedPreferences;
           });
+
+          // Save to database
+          final userId = _authService.currentUser?.id;
+          if (userId != null) {
+            try {
+              await _preferenceService.saveUserPreferences(
+                userId,
+                updatedPreferences,
+              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Preferences saved successfully'),
+                    backgroundColor: Color(0xFF4ECDC4),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            } catch (e) {
+              debugPrint('Failed to save preferences: $e');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to save preferences'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Preferences updated locally'),
+                  backgroundColor: Color(0xFF4ECDC4),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _clearPreferences() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Clear Preferences'),
+        content: Text(
+          'Are you sure you want to clear all your saved preferences? This will remove your pet type, garden, children, and existing pets settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: Text('Clear'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final userId = _authService.currentUser?.id;
+    if (userId != null) {
+      try {
+        await _preferenceService.clearUserPreferences(userId);
+        setState(() {
+          _savedPreferences = {
+            'petType': null,
+            'gardenAccess': null,
+            'hasChildren': false,
+            'childrenAgeRange': null,
+            'existingPets': <String>[],
+            'petCounts': <String, int>{},
+          };
+        });
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Preferences updated successfully'),
+              content: Text('Preferences cleared successfully'),
               backgroundColor: Color(0xFF4ECDC4),
               duration: Duration(seconds: 2),
             ),
           );
-        },
-      ),
-    );
+        }
+      } catch (e) {
+        debugPrint('Failed to clear preferences: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to clear preferences'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    }
   }
 
   void _showApplicationDetail(Map<String, dynamic> application) {
@@ -441,6 +764,13 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          NotificationBellWidget(
+            unreadCount: _unreadCount,
+            onTap: _showNotifications,
+          ),
+          SizedBox(width: 2.w),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _refreshData,
@@ -465,6 +795,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               SavedPreferencesCardWidget(
                 preferences: _savedPreferences,
                 onEditPreferences: _showPreferenceEditor,
+                onClearPreferences: _clearPreferences,
               ),
               SizedBox(height: 2.h),
               AdoptionStatusTrackingWidget(

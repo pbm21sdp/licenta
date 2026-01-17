@@ -5,11 +5,13 @@ import 'package:sizer/sizer.dart';
 class SavedPreferencesCardWidget extends StatelessWidget {
   final Map<String, dynamic> preferences;
   final VoidCallback onEditPreferences;
+  final VoidCallback? onClearPreferences;
 
   const SavedPreferencesCardWidget({
     super.key,
     required this.preferences,
     required this.onEditPreferences,
+    this.onClearPreferences,
   });
 
   @override
@@ -45,6 +47,15 @@ class SavedPreferencesCardWidget extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onClearPreferences != null)
+                TextButton.icon(
+                  onPressed: onClearPreferences,
+                  icon: Icon(Icons.clear_all, size: 16),
+                  label: Text('Clear'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                ),
               TextButton.icon(
                 onPressed: onEditPreferences,
                 icon: Icon(Icons.edit_outlined, size: 16),
