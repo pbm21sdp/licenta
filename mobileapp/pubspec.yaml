@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter # CRITICAL: Required for every Flutter project - DO NOT REMOVE
   
   # CRITICAL: Core UI and responsive design - DO NOT REMOVE OR MODIFY
+  supabase_flutter: ^2.9.1
   sizer: ^2.0.15              # Required for responsive design system
   flutter_svg: ^2.0.9        # Required for SVG icon support
   google_fonts: ^6.1.0       # Required for typography (replaces local fonts)
@@ -40,10 +41,12 @@ flutter:
   assets:
     - assets/
     - assets/images/
+
   fonts:
     - family: Cinthya
       fonts:
         - asset: assets/fonts/Cinthya-Austen.ttf
+
   # CRITICAL ASSET MANAGEMENT RULES:
   # - DO NOT ADD NEW ASSET DIRECTORIES (assets/svg/, assets/icons/, etc.)
   # - ONLY USE EXISTING AND ITEMS AVAILABLE IN THE DIRECTORIES LISTED ABOVE (assets/, assets/images/)
