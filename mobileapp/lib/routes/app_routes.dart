@@ -8,6 +8,7 @@ import '../presentation/onboarding_questionnaire/onboarding_questionnaire.dart';
 import '../presentation/pet_detail_screen/pet_detail_screen.dart';
 import '../presentation/account_management_screen/account_management_screen.dart';
 import '../presentation/chat_screen/chat_screen.dart';
+import '../presentation/reset_password_screen/reset_password_screen.dart';
 
 class AppRoutes {
   // TODO: Add routes here
@@ -21,6 +22,7 @@ class AppRoutes {
   static const String petDetail = '/pet-detail-screen';
   static const String profileScreen = '/profile-screen';
   static const String chatScreen = '/chat-screen';
+  static const String resetPassword = '/reset-password-screen';
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const WelcomeScreen(),
@@ -30,9 +32,12 @@ class AppRoutes {
     register: (context) => const RegisterScreen(),
     welcome: (context) => const WelcomeScreen(),
     onboardingQuestionnaire: (context) => const OnboardingQuestionnaire(),
-    petDetail: (context) => const PetDetailScreen(),
+    petDetail: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return PetDetailScreen(pet: args ?? {});
+    },
     profileScreen: (context) => const AccountManagementScreen(),
     chatScreen: (context) => const ChatScreen(),
-    // TODO: Add your other routes here
+    resetPassword: (context) => const ResetPasswordScreen(),
   };
 }
