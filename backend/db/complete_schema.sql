@@ -315,9 +315,11 @@ CREATE INDEX idx_pets_color ON pets(color); -- index pe color pentru filtrare du
 -- index pentru imaginile animalelor
 CREATE INDEX idx_pet_photos_pet_id ON pet_photos(pet_id); -- index pe pet_id pentru gasire rapida a tuturor pozelor unui animal - WHERE pet_id = ...
 CREATE INDEX idx_pet_photos_primary ON pet_photos(is_primary); -- index pe is_primary pentru gasire rapida a pozei principale - WHERE is_primary = true
+CREATE INDEX idx_pet_photos_pet_primary ON pet_photos(pet_id, is_primary); -- index compus pentru gasirea pozei principale a unui pet, WHERE pet_id = ... AND is_primary = true
 
 -- index pentru caracteristicile animalelor
 CREATE INDEX idx_pet_traits_pet_id ON pet_traits(pet_id); -- index pe pet_id pentru gasire rapida a tuturor caracteristicilor unui animal - WHERE pet_id = ...
+CREATE INDEX idx_pet_traits_trait ON pet_traits(trait); -- index pe trait pentru cautari dupa caracteristica specifica, WHERE trait = '...'
 
 -- index pentru adoptii
 CREATE INDEX idx_adoptions_user_id ON adoptions(user_id); -- index pe user_id pentru gasire rapida a tuturor cererilor unui utilizator - WHERE user_id = ...
