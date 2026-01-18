@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
@@ -7,16 +8,33 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/app_export.dart';
 import '../widgets/custom_error_widget.dart';
+import './services/fcm_service.dart';
 import './services/supabase_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Firebase first (required for FCM)
+  try {
+    await Firebase.initializeApp();
+    debugPrint('Firebase initialized successfully');
+  } catch (e) {
+    debugPrint('Failed to initialize Firebase: $e');
+  }
 
   // Initialize Supabase
   try {
     await SupabaseService.initialize();
   } catch (e) {
     debugPrint('Failed to initialize Supabase: $e');
+  }
+
+  // Initialize FCM service
+  try {
+    await FCMService.instance.initialize();
+    debugPrint('FCM service initialized successfully');
+  } catch (e) {
+    debugPrint('Failed to initialize FCM service: $e');
   }
 
   bool hasShownError = false;
