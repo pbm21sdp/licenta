@@ -233,20 +233,76 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => PreferenceEditorModalWidget(
         currentPreferences: _savedPreferences,
-        onSave: (updatedPreferences) {
+        onSave: (updatedPreferences) async {
+          // Actualizează local imediat pentru feedback rapid
           setState(() {
             _savedPreferences = updatedPreferences;
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Preferences updated successfully'),
-              backgroundColor: Color(0xFF4ECDC4),
-              duration: Duration(seconds: 2),
-            ),
-          );
+
+          // Trimite la API
+          try {
+            final apiPreferences = _mapToApiPreferences(updatedPreferences);
+            await _preferenceService.updatePreferences(apiPreferences);
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Preferences updated successfully'),
+                  backgroundColor: Color(0xFF4ECDC4),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+          } on ApiException catch (e) {
+            print('Error saving preferences: ${e.message}');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Could not save preferences: ${e.message}'),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
+              // Reîncarcă preferințele din API pentru a resincroniza
+              _loadPreferences();
+            }
+          }
         },
       ),
     );
+  }
+
+  // Convertește preferințele din UI în format API
+  Map<String, dynamic> _mapToApiPreferences(Map<String, dynamic> uiPrefs) {
+    // Convertește petType în lista de tipuri
+    List<String> petTypes = [];
+    final petType = uiPrefs['petType'] as String?;
+    if (petType == 'Dog') {
+      petTypes = ['dog'];
+    } else if (petType == 'Cat') {
+      petTypes = ['cat'];
+    } else if (petType == 'Both') {
+      petTypes = ['dog', 'cat'];
+    }
+
+    // Convertește gardenAccess în boolean
+    final gardenAccess = uiPrefs['gardenAccess'] as String?;
+    bool? hasGarden;
+    if (gardenAccess == 'Open Garden' || gardenAccess == 'Closed Garden') {
+      hasGarden = true;
+    } else if (gardenAccess == 'No Garden' || gardenAccess == 'No') {
+      hasGarden = false;
+    }
+
+    return {
+      'preferredPetTypes': petTypes,
+      'hasGarden': hasGarden,
+      'hasChildren': uiPrefs['hasChildren'] ?? false,
+      'childrenAges': uiPrefs['childrenAgeRange'] != null
+          ? [uiPrefs['childrenAgeRange']]
+          : null,
+      'hasOtherPets': (uiPrefs['existingPets'] as List?)?.isNotEmpty ?? false,
+      'otherPetTypes': uiPrefs['existingPets'],
+    };
   }
 
   void _showEditProfile() {
