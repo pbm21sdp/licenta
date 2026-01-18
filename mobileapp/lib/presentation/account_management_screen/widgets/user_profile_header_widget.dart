@@ -15,6 +15,30 @@ class UserProfileHeaderWidget extends StatelessWidget {
     required this.onEditProfile,
   });
 
+  static const String _placeholderAvatar = 'assets/images/placeholder_avatar.png';
+
+  Widget _buildAvatar(BuildContext context) {
+    final avatarUrl = userProfile['avatar'] as String?;
+
+    if (avatarUrl != null && avatarUrl.isNotEmpty) {
+      return CustomImageWidget(
+        imageUrl: avatarUrl,
+        width: 20.w,
+        height: 20.w,
+        fit: BoxFit.cover,
+        semanticLabel: userProfile['avatarSemanticLabel'] as String? ?? 'User profile photo',
+      );
+    }
+
+    return Image.asset(
+      _placeholderAvatar,
+      width: 20.w,
+      height: 20.w,
+      fit: BoxFit.cover,
+      semanticLabel: 'Default profile photo',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -41,13 +65,7 @@ class UserProfileHeaderWidget extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(50),
-                child: CustomImageWidget(
-                  imageUrl: userProfile['avatar'] as String,
-                  width: 20.w,
-                  height: 20.w,
-                  fit: BoxFit.cover,
-                  semanticLabel: userProfile['avatarSemanticLabel'] as String,
-                ),
+                child: _buildAvatar(context),
               ),
               SizedBox(width: 4.w),
               Expanded(

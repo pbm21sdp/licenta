@@ -9,6 +9,10 @@ import '../presentation/pet_detail_screen/pet_detail_screen.dart';
 import '../presentation/account_management_screen/account_management_screen.dart';
 import '../presentation/chat_screen/chat_screen.dart';
 import '../presentation/reset_password_screen/reset_password_screen.dart';
+import '../presentation/settings/notification_preferences_screen.dart';
+import '../presentation/settings/account_security_screen.dart';
+import '../presentation/settings/privacy_controls_screen.dart';
+import '../presentation/settings/help_support_screen.dart';
 
 class AppRoutes {
   // TODO: Add routes here
@@ -23,6 +27,10 @@ class AppRoutes {
   static const String profileScreen = '/profile-screen';
   static const String chatScreen = '/chat-screen';
   static const String resetPassword = '/reset-password-screen';
+  static const String notificationPreferences = '/notification-preferences';
+  static const String accountSecurity = '/account-security';
+  static const String privacyControls = '/privacy-controls';
+  static const String helpSupport = '/help-support';
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const WelcomeScreen(),
@@ -39,5 +47,9 @@ class AppRoutes {
     profileScreen: (context) => const AccountManagementScreen(),
     chatScreen: (context) => const ChatScreen(),
     resetPassword: (context) => const ResetPasswordScreen(),
+    notificationPreferences: (context) => const NotificationPreferencesScreen(),
+    accountSecurity: (context) => const AccountSecurityScreen(),
+    privacyControls: (context) => const PrivacyControlsScreen(),
+    helpSupport: (context) => const HelpSupportScreen(),
   };
 }

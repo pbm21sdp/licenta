@@ -14,6 +14,7 @@ import './widgets/application_history_card_widget.dart';
 import './widgets/notification_bell_widget.dart';
 import './widgets/notification_list_widget.dart';
 import './widgets/preference_editor_modal_widget.dart';
+import './widgets/profile_editor_modal_widget.dart';
 import './widgets/saved_preferences_card_widget.dart';
 import './widgets/settings_section_widget.dart';
 import './widgets/user_profile_header_widget.dart';
@@ -41,15 +42,13 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   List<Map<String, dynamic>> _notifications = [];
   List<Map<String, dynamic>> _applicationHistory = [];
 
-  // User profile data
-  final Map<String, dynamic> _userProfile = {
-    "name": "Sarah Johnson",
-    "email": "user@petadoption.com",
-    "memberSince": DateTime(2024, 1, 15),
-    "avatar":
-        "https://img.rocket.new/generatedImages/rocket_gen_img_1bb0109eb-1763295676769.png",
-    "avatarSemanticLabel":
-        "Profile photo of woman with brown hair smiling at camera",
+  // User profile data - loaded from database
+  Map<String, dynamic> _userProfile = {
+    "name": "",
+    "email": "",
+    "memberSince": DateTime.now(),
+    "avatar": null,
+    "avatarSemanticLabel": "User profile photo",
   };
 
   // Saved preferences - will be loaded from database
@@ -65,9 +64,51 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   @override
   void initState() {
     super.initState();
+    _loadUserProfile();
     _setupNotifications();
     _loadAdoptionHistory();
     _loadSavedPreferences();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final profile = await _authService.getUserProfile();
+      final user = _authService.currentUser;
+
+      if (mounted && profile != null) {
+        setState(() {
+          _userProfile = {
+            "name": profile['full_name'] ?? user?.email?.split('@')[0] ?? '',
+            "email": user?.email ?? '',
+            "memberSince": profile['created_at'] != null
+                ? DateTime.parse(profile['created_at'] as String)
+                : DateTime.now(),
+            "avatar": profile['avatar_url'],
+            "avatarSemanticLabel": "User profile photo",
+            // Store raw profile data for editor
+            "full_name": profile['full_name'],
+            "phone": profile['phone'],
+            "avatar_url": profile['avatar_url'],
+          };
+        });
+      } else if (mounted && user != null) {
+        // Fallback to auth user data if profile not found
+        setState(() {
+          _userProfile = {
+            "name": user.email?.split('@')[0] ?? '',
+            "email": user.email ?? '',
+            "memberSince": DateTime.now(),
+            "avatar": null,
+            "avatarSemanticLabel": "User profile photo",
+            "full_name": null,
+            "phone": null,
+            "avatar_url": null,
+          };
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load user profile: $e');
+    }
   }
 
   Future<void> _loadSavedPreferences() async {
@@ -346,7 +387,12 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     setState(() {
       _isLoading = true;
     });
-    await Future.wait([_loadNotifications(), _loadAdoptionHistory()]);
+    await Future.wait([
+      _loadUserProfile(),
+      _loadNotifications(),
+      _loadAdoptionHistory(),
+      _loadSavedPreferences(),
+    ]);
     setState(() {
       _isLoading = false;
     });
@@ -480,6 +526,33 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         }
       }
     }
+  }
+
+  void _showProfileEditor() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ProfileEditorModalWidget(
+        currentProfile: {
+          'full_name': _userProfile['full_name'],
+          'phone': _userProfile['phone'],
+          'avatar_url': _userProfile['avatar_url'],
+        },
+        onSave: (updatedProfile) {
+          setState(() {
+            _userProfile = {
+              ..._userProfile,
+              "name": updatedProfile['full_name'] ?? _userProfile['name'],
+              "avatar": updatedProfile['avatar_url'],
+              "full_name": updatedProfile['full_name'],
+              "phone": updatedProfile['phone'],
+              "avatar_url": updatedProfile['avatar_url'],
+            };
+          });
+        },
+      ),
+    );
   }
 
   void _showApplicationDetail(Map<String, dynamic> application) {
@@ -782,14 +855,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               SizedBox(height: 2.h),
               UserProfileHeaderWidget(
                 userProfile: _userProfile,
-                onEditProfile: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Edit profile coming soon'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
+                onEditProfile: _showProfileEditor,
               ),
               SizedBox(height: 2.h),
               SavedPreferencesCardWidget(

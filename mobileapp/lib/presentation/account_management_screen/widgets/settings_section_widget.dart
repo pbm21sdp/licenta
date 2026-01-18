@@ -40,12 +40,7 @@ class SettingsSectionWidget extends StatelessWidget {
             icon: Icons.notifications_outlined,
             title: 'Notification Preferences',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Notification settings coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              Navigator.pushNamed(context, AppRoutes.notificationPreferences);
             },
           ),
           _buildDivider(theme),
@@ -54,12 +49,7 @@ class SettingsSectionWidget extends StatelessWidget {
             icon: Icons.security_outlined,
             title: 'Account Security',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Security settings coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              Navigator.pushNamed(context, AppRoutes.accountSecurity);
             },
           ),
           _buildDivider(theme),
@@ -68,12 +58,7 @@ class SettingsSectionWidget extends StatelessWidget {
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Controls',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Privacy settings coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              Navigator.pushNamed(context, AppRoutes.privacyControls);
             },
           ),
           _buildDivider(theme),
@@ -82,12 +67,7 @@ class SettingsSectionWidget extends StatelessWidget {
             icon: Icons.help_outline,
             title: 'Help & Support',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Help center coming soon'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
+              Navigator.pushNamed(context, AppRoutes.helpSupport);
             },
           ),
           _buildDivider(theme),
