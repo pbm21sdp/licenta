@@ -108,7 +108,7 @@ class CustomImageWidget extends StatelessWidget {
   }
 
   Widget _buildImageView() {
-    if (imageUrl != null) {
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
       switch (imageUrl!.imageType) {
         case ImageType.svg:
           return SizedBox(
@@ -174,6 +174,13 @@ class CustomImageWidget extends StatelessWidget {
           );
       }
     }
-    return SizedBox();
+    // Show placeholder when no valid image URL
+    return Image.asset(
+      placeHolder,
+      height: height,
+      width: width,
+      fit: fit ?? BoxFit.cover,
+      semanticLabel: semanticLabel ?? 'No image available',
+    );
   }
 }

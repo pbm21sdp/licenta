@@ -76,11 +76,11 @@ class FavoritePetCardWidget extends StatelessWidget {
                         top: Radius.circular(12),
                       ),
                       child: CustomImageWidget(
-                        imageUrl: pet["image"] as String,
+                        imageUrl: (pet["image"] as String?) ?? '',
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.cover,
-                        semanticLabel: pet["semanticLabel"] as String,
+                        semanticLabel: (pet["semanticLabel"] as String?) ?? pet["name"] as String? ?? 'Pet image',
                       ),
                     ),
 
@@ -141,7 +141,7 @@ class FavoritePetCardWidget extends StatelessWidget {
                   children: [
                     // Name
                     Text(
-                      pet["name"] as String,
+                      (pet["name"] as String?) ?? 'Unknown',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -152,7 +152,7 @@ class FavoritePetCardWidget extends StatelessWidget {
 
                     // Age and breed
                     Text(
-                      '${pet["age"]} • ${pet["breed"]}',
+                      '${(pet["age"] as String?) ?? 'Unknown'} • ${(pet["breed"] as String?) ?? 'Unknown'}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
@@ -165,19 +165,22 @@ class FavoritePetCardWidget extends StatelessWidget {
                     Row(
                       children: [
                         CustomIconWidget(
-                          iconName: (pet["gender"] as String) == 'Male'
+                          iconName: ((pet["gender"] as String?) ?? 'Male') == 'Male'
                               ? 'male'
                               : 'female',
-                          color: (pet["gender"] as String) == 'Male'
+                          color: ((pet["gender"] as String?) ?? 'Male') == 'Male'
                               ? Colors.blue
                               : Colors.pink,
                           size: 16,
                         ),
                         SizedBox(width: 1.w),
-                        Text(
-                          pet["gender"] as String,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                        Flexible(
+                          child: Text(
+                            (pet["gender"] as String?) ?? 'Unknown',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

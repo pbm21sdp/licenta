@@ -5,6 +5,9 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../../services/pet_service.dart';
+import '../../services/api_client.dart';
+import '../../data/models/pet_model.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/pet_card_widget.dart';
 
@@ -18,11 +21,19 @@ class MainPetsScreenInitialPage extends StatefulWidget {
 
 class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
   final CardSwiperController _cardController = CardSwiperController();
+  final PetService _petService = PetService();
+
   bool _showUndoButton = false;
   bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
   int _currentCardIndex = 0;
 
-  final List<Map<String, dynamic>> _petData = [
+  // Lista de animale de la API
+  List<PetModel> _pets = [];
+
+  // Date mock pentru fallback când nu există conexiune la server
+  final List<Map<String, dynamic>> _mockPetData = [
     {
       "id": 1,
       "name": "Luna",
@@ -30,23 +41,9 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       "breed": "Golden Retriever",
       "gender": "Female",
       "image": "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-      "semanticLabel":
-          "Golden Retriever dog with fluffy golden fur sitting outdoors in natural lighting",
-      "bio":
-          "Luna is a friendly and energetic Golden Retriever who loves playing fetch and swimming. She's great with children and other pets.",
+      "semanticLabel": "Luna, Golden Retriever, 2 years",
+      "bio": "Luna is a friendly and energetic Golden Retriever who loves playing fetch and swimming.",
       "healthStatus": "Vaccinated, Spayed, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-          "semanticLabel":
-              "Golden Retriever dog with fluffy golden fur sitting outdoors in natural lighting",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1632366941290-f3248eb1699f",
-          "semanticLabel":
-              "Golden Retriever puppy lying on grass with tongue out",
-        },
-      ],
     },
     {
       "id": 2,
@@ -55,23 +52,9 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       "breed": "Labrador",
       "gender": "Male",
       "image": "https://images.unsplash.com/photo-1507270603269-dbbf5099b47c",
-      "semanticLabel":
-          "Black Labrador dog with shiny coat sitting attentively with alert expression",
-      "bio":
-          "Max is a loyal and intelligent Labrador who enjoys long walks and training sessions. He's well-behaved and house-trained.",
+      "semanticLabel": "Max, Labrador, 3 years",
+      "bio": "Max is a loyal and intelligent Labrador who enjoys long walks and training sessions.",
       "healthStatus": "Vaccinated, Neutered, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1507270603269-dbbf5099b47c",
-          "semanticLabel":
-              "Black Labrador dog with shiny coat sitting attentively with alert expression",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1575493125700-d31ebbc72b09",
-          "semanticLabel":
-              "Black Labrador running through water with joyful expression",
-        },
-      ],
     },
     {
       "id": 3,
@@ -80,97 +63,9 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       "breed": "Persian Cat",
       "gender": "Female",
       "image": "https://images.unsplash.com/photo-1612801143784-84b527938e53",
-      "semanticLabel":
-          "White Persian cat with fluffy fur and blue eyes looking directly at camera",
-      "bio":
-          "Bella is a gentle and affectionate Persian cat who loves cuddles and quiet environments. She's perfect for apartment living.",
+      "semanticLabel": "Bella, Persian Cat, 1 year",
+      "bio": "Bella is a gentle and affectionate Persian cat who loves cuddles.",
       "healthStatus": "Vaccinated, Spayed, Dewormed",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1612801143784-84b527938e53",
-          "semanticLabel":
-              "White Persian cat with fluffy fur and blue eyes looking directly at camera",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1575408824052-8f497497f04b",
-          "semanticLabel": "White Persian cat grooming itself on soft blanket",
-        },
-      ],
-    },
-    {
-      "id": 4,
-      "name": "Charlie",
-      "age": "4 years",
-      "breed": "Beagle",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1603088839340-d73e99dd831a",
-      "semanticLabel":
-          "Beagle dog with brown and white coat sitting on wooden deck with curious expression",
-      "bio":
-          "Charlie is a playful and curious Beagle with a great sense of smell. He loves outdoor adventures and exploring new places.",
-      "healthStatus": "Vaccinated, Neutered, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1603088839340-d73e99dd831a",
-          "semanticLabel":
-              "Beagle dog with brown and white coat sitting on wooden deck with curious expression",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1548980939-59b205ca539d",
-          "semanticLabel":
-              "Beagle dog running through autumn leaves with happy expression",
-        },
-      ],
-    },
-    {
-      "id": 5,
-      "name": "Daisy",
-      "age": "2 years",
-      "breed": "Siamese Cat",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1709262315195-3254daf9068c",
-      "semanticLabel":
-          "Siamese cat with cream and brown points sitting elegantly with blue eyes",
-      "bio":
-          "Daisy is a vocal and social Siamese cat who loves attention and interactive play. She's very intelligent and learns tricks quickly.",
-      "healthStatus": "Vaccinated, Spayed, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1709262315195-3254daf9068c",
-          "semanticLabel":
-              "Siamese cat with cream and brown points sitting elegantly with blue eyes",
-        },
-        {
-          "url": "https://images.unsplash.com/photo-1624268898688-2e745a947348",
-          "semanticLabel": "Siamese cat playing with toy on carpet",
-        },
-      ],
-    },
-    {
-      "id": 6,
-      "name": "Rocky",
-      "age": "5 years",
-      "breed": "German Shepherd",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1582660482303-0b292b0971fe",
-      "semanticLabel":
-          "German Shepherd dog with black and tan coat sitting alert with pointed ears",
-      "bio":
-          "Rocky is a protective and loyal German Shepherd who makes an excellent guard dog. He's well-trained and responds to commands.",
-      "healthStatus": "Vaccinated, Neutered, Microchipped",
-      "gallery": [
-        {
-          "url": "https://images.unsplash.com/photo-1582660482303-0b292b0971fe",
-          "semanticLabel":
-              "German Shepherd dog with black and tan coat sitting alert with pointed ears",
-        },
-        {
-          "url":
-              "https://img.rocket.new/generatedImages/rocket_gen_img_1c0db7698-1764889533933.png",
-          "semanticLabel":
-              "German Shepherd running through field with focused expression",
-        },
-      ],
     },
   ];
 
@@ -181,16 +76,71 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
   }
 
   Future<void> _loadPets() async {
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
+    try {
+      // Încearcă să încarce animalele de la API
+      final pets = await _petService.getSwipePets(limit: 10);
+
+      if (mounted) {
+        setState(() {
+          _pets = pets;
+          _isLoading = false;
+          _currentCardIndex = 0;
+        });
+      }
+    } on ApiException catch (e) {
+      print('API Error: ${e.message}');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading pets: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Nu se pot încărca animalele. Verifică conexiunea.';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _refreshPets() async {
+    _currentCardIndex = 0;
     await _loadPets();
+  }
+
+  // Convertește PetModel la Map pentru compatibilitate cu widget-urile existente
+  Map<String, dynamic> _petToMap(PetModel pet) {
+    return {
+      "id": pet.id,
+      "name": pet.name,
+      "age": pet.ageDisplay,
+      "breed": pet.breed ?? "Unknown",
+      "gender": pet.genderDisplay,
+      "image": pet.imageUrl,
+      "semanticLabel": "${pet.name}, ${pet.breed ?? 'Unknown breed'}, ${pet.ageDisplay}",
+      "bio": pet.description ?? pet.story ?? "No description available.",
+      "healthStatus": pet.healthStatus ?? "Health status not available",
+      "gallery": pet.galleryUrls.map((url) => {"url": url}).toList(),
+    };
+  }
+
+  // Obține datele pentru afișare (API sau mock)
+  List<Map<String, dynamic>> get _displayPets {
+    if (_pets.isNotEmpty) {
+      return _pets.map((pet) => _petToMap(pet)).toList();
+    }
+    return _mockPetData;
   }
 
   bool _onSwipe(
@@ -198,12 +148,29 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
     int? currentIndex,
     CardSwiperDirection direction,
   ) {
+    // Obține pet-ul care a fost swiped
+    final swipedPet = _pets.isNotEmpty && previousIndex < _pets.length
+        ? _pets[previousIndex]
+        : null;
+
     if (direction == CardSwiperDirection.right) {
       HapticFeedback.lightImpact();
       _showUndoButtonTemporarily();
+      // Like - trimite la API
+      if (swipedPet != null) {
+        _petService.likePet(swipedPet.id).catchError((e) {
+          print('Error liking pet: $e');
+        });
+      }
     } else if (direction == CardSwiperDirection.left) {
       HapticFeedback.lightImpact();
       _showUndoButtonTemporarily();
+      // Pass - trimite la API
+      if (swipedPet != null) {
+        _petService.passPet(swipedPet.id).catchError((e) {
+          print('Error passing pet: $e');
+        });
+      }
     }
 
     if (currentIndex != null) {
@@ -251,6 +218,51 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
   void dispose() {
     _cardController.dispose();
     super.dispose();
+  }
+
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(6.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomIconWidget(
+              iconName: 'error_outline',
+              color: theme.colorScheme.error,
+              size: 64,
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Oops! Something went wrong',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              _errorMessage ?? 'Could not load pets. Please try again.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 3.h),
+            ElevatedButton.icon(
+              onPressed: _refreshPets,
+              icon: CustomIconWidget(
+                iconName: 'refresh',
+                color: theme.colorScheme.onPrimary,
+                size: 20,
+              ),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -309,7 +321,9 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
                     color: theme.colorScheme.primary,
                   ),
                 )
-              : _currentCardIndex >= _petData.length
+              : _hasError
+              ? _buildErrorState()
+              : _displayPets.isEmpty || _currentCardIndex >= _displayPets.length
               ? EmptyStateWidget(onRefresh: _refreshPets)
               : Stack(
                   children: [
@@ -320,9 +334,16 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
                       ),
                       child: CardSwiper(
                         controller: _cardController,
-                        cardsCount: _petData.length,
+                        cardsCount: _displayPets.length,
                         onSwipe: _onSwipe,
-                        numberOfCardsDisplayed: 3,
+                        onEnd: () {
+                          // Called when all cards have been swiped
+                          setState(() {
+                            _currentCardIndex = _displayPets.length;
+                          });
+                        },
+                        isLoop: false,
+                        numberOfCardsDisplayed: _displayPets.length >= 3 ? 3 : _displayPets.length,
                         backCardOffset: const Offset(0, 40),
                         padding: EdgeInsets.zero,
                         cardBuilder:
@@ -333,9 +354,9 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
                               verticalThresholdPercentage,
                             ) {
                               return PetCardWidget(
-                                pet: _petData[index],
+                                pet: _displayPets[index],
                                 onTap: () =>
-                                    _navigateToPetDetail(_petData[index]),
+                                    _navigateToPetDetail(_displayPets[index]),
                               );
                             },
                       ),

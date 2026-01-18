@@ -37,11 +37,11 @@ class PetCardWidget extends StatelessWidget {
           child: Stack(
             children: [
               CustomImageWidget(
-                imageUrl: pet["image"] as String,
+                imageUrl: (pet["image"] as String?) ?? '',
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
-                semanticLabel: pet["semanticLabel"] as String,
+                semanticLabel: (pet["semanticLabel"] as String?) ?? pet["name"] as String? ?? 'Pet image',
               ),
               Positioned(
                 left: 0,
@@ -67,7 +67,7 @@ class PetCardWidget extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              pet["name"] as String,
+                              (pet["name"] as String?) ?? 'Unknown',
                               style: theme.textTheme.headlineMedium?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
@@ -79,7 +79,7 @@ class PetCardWidget extends StatelessWidget {
                           SizedBox(width: 2.w),
                           CustomIconWidget(
                             iconName:
-                                (pet["gender"] as String).toLowerCase() ==
+                                ((pet["gender"] as String?) ?? 'male').toLowerCase() ==
                                     'male'
                                 ? 'male'
                                 : 'female',
@@ -98,7 +98,7 @@ class PetCardWidget extends StatelessWidget {
                           ),
                           SizedBox(width: 1.w),
                           Text(
-                            pet["age"] as String,
+                            (pet["age"] as String?) ?? 'Unknown',
                             style: theme.textTheme.bodyLarge?.copyWith(
                               color: Colors.white.withValues(alpha: 0.9),
                             ),
@@ -112,7 +112,7 @@ class PetCardWidget extends StatelessWidget {
                           SizedBox(width: 1.w),
                           Expanded(
                             child: Text(
-                              pet["breed"] as String,
+                              (pet["breed"] as String?) ?? 'Unknown',
                               style: theme.textTheme.bodyLarge?.copyWith(
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),

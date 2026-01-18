@@ -3,6 +3,8 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../../services/favorite_service.dart';
+import '../../services/api_client.dart';
 import './widgets/empty_favorites_widget.dart';
 import './widgets/favorite_pet_card_widget.dart';
 import './widgets/favorites_header_widget.dart';
@@ -23,108 +25,76 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   String _searchQuery = '';
   String _sortOption = 'Recently Added';
 
-  // Mock data for favorites - Session-based persistence
-  final List<Map<String, dynamic>> _allFavorites = [
-    {
-      "id": 1,
-      "name": "Luna",
-      "age": "2 years",
-      "breed": "Golden Retriever",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-      "semanticLabel":
-          "Golden Retriever dog with fluffy golden fur sitting outdoors in sunlight",
-      "bio":
-          "Luna is a friendly and energetic Golden Retriever who loves playing fetch and swimming. She's great with children and other pets.",
-      "healthStatus": "Vaccinated, Spayed, Microchipped",
-      "addedDate": DateTime.now().subtract(Duration(days: 2)),
-      "available": true,
-    },
-    {
-      "id": 2,
-      "name": "Max",
-      "age": "3 years",
-      "breed": "Labrador",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1593642867074-f6e8a4275b28",
-      "semanticLabel":
-          "Black Labrador dog with shiny coat sitting on grass looking at camera",
-      "bio":
-          "Max is a loyal and gentle Labrador who enjoys long walks and cuddles. He's well-trained and perfect for families.",
-      "healthStatus": "Vaccinated, Neutered, Healthy",
-      "addedDate": DateTime.now().subtract(Duration(days: 5)),
-      "available": true,
-    },
-    {
-      "id": 3,
-      "name": "Whiskers",
-      "age": "1 year",
-      "breed": "Persian Cat",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1696996752553-fc0abffc4e80",
-      "semanticLabel":
-          "White Persian cat with fluffy fur and blue eyes sitting on wooden surface",
-      "bio":
-          "Whiskers is a calm and affectionate Persian cat who loves quiet environments and gentle petting. Perfect for apartment living.",
-      "healthStatus": "Vaccinated, Neutered, Indoor Cat",
-      "addedDate": DateTime.now().subtract(Duration(days: 1)),
-      "available": true,
-    },
-    {
-      "id": 4,
-      "name": "Bella",
-      "age": "4 years",
-      "breed": "Beagle",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1710979421781-b22afa51211c",
-      "semanticLabel":
-          "Beagle dog with brown and white coat sitting on grass with tongue out",
-      "bio":
-          "Bella is a curious and playful Beagle with a great sense of smell. She loves outdoor adventures and treats.",
-      "healthStatus": "Vaccinated, Spayed, Healthy",
-      "addedDate": DateTime.now().subtract(Duration(days: 7)),
-      "available": false,
-    },
-    {
-      "id": 5,
-      "name": "Charlie",
-      "age": "5 years",
-      "breed": "Tabby Cat",
-      "gender": "Male",
-      "image": "https://images.unsplash.com/photo-1602418013963-c1f017b3bb63",
-      "semanticLabel":
-          "Orange tabby cat with green eyes lying on wooden floor looking at camera",
-      "bio":
-          "Charlie is an independent and friendly tabby cat who enjoys sunbathing and bird watching. Great mouser!",
-      "healthStatus": "Vaccinated, Neutered, Indoor/Outdoor",
-      "addedDate": DateTime.now().subtract(Duration(days: 3)),
-      "available": true,
-    },
-    {
-      "id": 6,
-      "name": "Daisy",
-      "age": "2 years",
-      "breed": "Poodle",
-      "gender": "Female",
-      "image": "https://images.unsplash.com/photo-1653156849433-e61ad6f3c574",
-      "semanticLabel":
-          "White poodle with curly fur sitting on grass with happy expression",
-      "bio":
-          "Daisy is an intelligent and hypoallergenic Poodle who loves learning tricks and playing with toys.",
-      "healthStatus": "Vaccinated, Spayed, Groomed",
-      "addedDate": DateTime.now().subtract(Duration(days: 4)),
-      "available": true,
-    },
-  ];
-
+  // Service și state pentru favorites
+  final FavoriteService _favoriteService = FavoriteService();
+  List<FavoriteItem> _favoritePets = [];
+  List<Map<String, dynamic>> _allFavorites = [];
   List<Map<String, dynamic>> _filteredFavorites = [];
-  bool _isLoading = false;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _filteredFavorites = List.from(_allFavorites);
     _searchController.addListener(_onSearchChanged);
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await _favoriteService.getFavorites();
+
+      if (mounted) {
+        setState(() {
+          _favoritePets = response.favorites;
+          _allFavorites = response.favorites.map((fav) => _favoriteToMap(fav)).toList();
+          _isLoading = false;
+          _filterAndSortFavorites();
+        });
+      }
+    } on ApiException catch (e) {
+      print('API Error loading favorites: ${e.message}');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = e.message;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading favorites: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _errorMessage = 'Could not load favorites. Please try again.';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Convertește FavoriteItem la Map pentru compatibilitate cu widget-urile existente
+  Map<String, dynamic> _favoriteToMap(FavoriteItem fav) {
+    return {
+      "id": fav.id,
+      "name": fav.name,
+      "age": fav.ageCategory ?? "Unknown age",
+      "breed": fav.breed ?? "Unknown",
+      "gender": fav.gender ?? "Unknown",
+      "image": fav.imageUrl,
+      "semanticLabel": "${fav.breed ?? 'Pet'} named ${fav.name}",
+      "bio": "A lovely ${fav.type} looking for a home.",
+      "healthStatus": "Contact shelter for health details",
+      "addedDate": fav.favoritedAt,
+      "available": fav.isAvailable,
+    };
   }
 
   @override
@@ -142,35 +112,38 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   void _filterAndSortFavorites() {
     List<Map<String, dynamic>> filtered = _allFavorites.where((pet) {
-      final name = (pet["name"] as String).toLowerCase();
-      final breed = (pet["breed"] as String).toLowerCase();
+      final name = ((pet["name"] as String?) ?? '').toLowerCase();
+      final breed = ((pet["breed"] as String?) ?? '').toLowerCase();
       return name.contains(_searchQuery) || breed.contains(_searchQuery);
     }).toList();
 
     // Apply sorting
     switch (_sortOption) {
       case 'Recently Added':
-        filtered.sort(
-          (a, b) => (b["addedDate"] as DateTime).compareTo(
-            a["addedDate"] as DateTime,
-          ),
-        );
+        filtered.sort((a, b) {
+          final dateA = a["addedDate"] as DateTime?;
+          final dateB = b["addedDate"] as DateTime?;
+          if (dateA == null && dateB == null) return 0;
+          if (dateA == null) return 1;
+          if (dateB == null) return -1;
+          return dateB.compareTo(dateA);
+        });
         break;
       case 'Alphabetical':
         filtered.sort(
-          (a, b) => (a["name"] as String).compareTo(b["name"] as String),
+          (a, b) => ((a["name"] as String?) ?? '').compareTo((b["name"] as String?) ?? ''),
         );
         break;
       case 'Age':
         filtered.sort((a, b) {
-          final ageA = int.parse((a["age"] as String).split(' ')[0]);
-          final ageB = int.parse((b["age"] as String).split(' ')[0]);
+          final ageA = (a["age"] as String?) ?? '';
+          final ageB = (b["age"] as String?) ?? '';
           return ageA.compareTo(ageB);
         });
         break;
       case 'Breed':
         filtered.sort(
-          (a, b) => (a["breed"] as String).compareTo(b["breed"] as String),
+          (a, b) => ((a["breed"] as String?) ?? '').compareTo((b["breed"] as String?) ?? ''),
         );
         break;
     }
@@ -222,23 +195,72 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 
-  void _removeFavorite(int petId) {
+  Future<void> _removeFavorite(int petId) async {
+    // Salvează pet-ul pentru undo
+    final removedPetIndex = _allFavorites.indexWhere((pet) => pet["id"] == petId);
+    final removedPet = removedPetIndex != -1 ? _allFavorites[removedPetIndex] : null;
+    final removedFavIndex = _favoritePets.indexWhere((fav) => fav.id == petId);
+
+    // Elimină din UI imediat pentru feedback rapid
     setState(() {
       _allFavorites.removeWhere((pet) => pet["id"] == petId);
+      if (removedFavIndex != -1) {
+        _favoritePets.removeAt(removedFavIndex);
+      }
       _filterAndSortFavorites();
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Removed from favorites'),
-        action: SnackBarAction(
-          label: 'UNDO',
-          onPressed: () {
-            // Undo functionality would restore the pet
-          },
-        ),
-      ),
-    );
+    try {
+      await _favoriteService.removeFavorite(petId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Removed from favorites'),
+            action: SnackBarAction(
+              label: 'UNDO',
+              onPressed: () async {
+                // Readaugă în favorites
+                try {
+                  await _favoriteService.addFavorite(petId);
+                  _loadFavorites(); // Reîncarcă lista
+                } catch (e) {
+                  print('Error undoing remove: $e');
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      // Restaurează pet-ul în UI dacă API-ul eșuează
+      if (removedPet != null && mounted) {
+        setState(() {
+          _allFavorites.insert(removedPetIndex, removedPet);
+          _filterAndSortFavorites();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not remove: ${e.message}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      // Restaurează pet-ul în UI dacă API-ul eșuează
+      if (removedPet != null && mounted) {
+        setState(() {
+          _allFavorites.insert(removedPetIndex, removedPet);
+          _filterAndSortFavorites();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not remove from favorites'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
   }
 
   void _showContextMenu(Map<String, dynamic> pet) {
@@ -361,25 +383,69 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Future<void> _refreshFavorites() async {
-    setState(() {
-      _isLoading = true;
-    });
+    await _loadFavorites();
 
-    // Simulate network delay
-    await Future.delayed(Duration(seconds: 1));
-
-    // Update availability status (simulate real-time updates)
-    setState(() {
-      _isLoading = false;
-    });
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Favorites updated')));
+    if (mounted && !_hasError) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Favorites updated')));
+    }
   }
 
   void _navigateToMainPets() {
     Navigator.of(context, rootNavigator: true).pushNamed('/main-pets-screen');
+  }
+
+  Widget _buildErrorState() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.all(6.w),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CustomIconWidget(
+              iconName: 'error_outline',
+              color: theme.colorScheme.error,
+              size: 64,
+            ),
+            SizedBox(height: 2.h),
+            Text(
+              'Could not load favorites',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 1.h),
+            Text(
+              _errorMessage ?? 'Please try again later.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 3.h),
+            ElevatedButton.icon(
+              onPressed: _loadFavorites,
+              icon: CustomIconWidget(
+                iconName: 'refresh',
+                color: theme.colorScheme.onPrimary,
+                size: 20,
+              ),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _navigateToPetDetail(Map<String, dynamic> pet) {
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushNamed('/pet-detail-screen', arguments: pet);
   }
 
   @override
@@ -396,7 +462,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
         // Main content
         Expanded(
-          child: _filteredFavorites.isEmpty
+          child: _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              : _hasError
+              ? _buildErrorState()
+              : _filteredFavorites.isEmpty
               ? EmptyFavoritesWidget(onStartSwipingPressed: _navigateToMainPets)
               : RefreshIndicator(
                   onRefresh: _refreshFavorites,
@@ -413,14 +487,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       final pet = _filteredFavorites[index];
                       return FavoritePetCardWidget(
                         pet: pet,
-                        onTap: () {
-                          // Navigate to pet detail view
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Pet detail view coming soon'),
-                            ),
-                          );
-                        },
+                        onTap: () => _navigateToPetDetail(pet),
                         onLongPress: () => _showContextMenu(pet),
                         onRemove: () =>
                             _showRemoveConfirmation(pet["id"] as int),
