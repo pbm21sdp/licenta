@@ -46,5 +46,17 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 android/app/.cxx
+android/build/
+
+# Flutter metadata
+.metadata
+
+# Platform-specific folders (not needed for Android-only development)
+linux/
+macos/
+windows/
+
+# Tests (uncomment if you want to track tests)
+# test/
 
 env.json

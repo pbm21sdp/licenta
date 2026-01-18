@@ -1,4 +1,4 @@
-# Flutter
+`````# Flutter
 
 A modern Flutter-based mobile application utilizing the latest mobile development technologies and tools for building responsive cross-platform applications.
 
@@ -87,7 +87,6 @@ class AppRoutes {
     initial: (context) => const SplashScreen(),
     home: (context) => const HomeScreen(),
     // Add more routes as needed
-  }
 }
 ```
 
@@ -140,3 +139,4 @@ flutter build ios --release
 - Styled with Material Design
 
 Built with ❤️ on Rocket.new
+```
