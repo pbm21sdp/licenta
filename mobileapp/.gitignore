@@ -53,3 +53,7 @@ CLAUDE.md
 PLANNING.md
 ROCKET.md
 TASKS.md
+
+package.json
+package-lock.json
+node_modules

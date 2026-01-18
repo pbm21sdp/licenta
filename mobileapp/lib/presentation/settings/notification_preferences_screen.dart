@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../services/fcm_service.dart';
 
 /// Screen for managing notification preferences
 /// Allows users to toggle different types of notifications
@@ -32,12 +35,20 @@ class _NotificationPreferencesScreenState
   Future<void> _loadPreferences() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // Load push notification preference from database
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      bool pushEnabled = true;
+      if (userId != null) {
+        pushEnabled = await FCMService.instance.getPushEnabled(userId);
+      }
+
       setState(() {
         _applicationUpdates = prefs.getBool('notif_application_updates') ?? true;
         _newPetAlerts = prefs.getBool('notif_new_pet_alerts') ?? true;
         _promotions = prefs.getBool('notif_promotions') ?? false;
         _emailNotifications = prefs.getBool('notif_email') ?? true;
-        _pushNotifications = prefs.getBool('notif_push') ?? true;
+        _pushNotifications = pushEnabled;
         _isLoading = false;
       });
     } catch (e) {
@@ -152,9 +163,26 @@ class _NotificationPreferencesScreenState
                         title: 'Push Notifications',
                         subtitle: 'Receive push notifications on your device',
                         value: _pushNotifications,
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           setState(() => _pushNotifications = value);
-                          _savePreference('notif_push', value);
+                          // Sync with FCM service and database
+                          final userId = Supabase.instance.client.auth.currentUser?.id;
+                          if (userId != null) {
+                            try {
+                              await FCMService.instance.setPushEnabled(userId, value);
+                            } catch (e) {
+                              // Revert on error
+                              setState(() => _pushNotifications = !value);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to update push notification setting'),
+                                    backgroundColor: Theme.of(context).colorScheme.error,
+                                  ),
+                                );
+                              }
+                            }
+                          }
                         },
                       ),
                     ],

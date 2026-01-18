@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'fcm_service.dart';
+
 /// Service class for handling Supabase authentication operations
 /// Manages user signup, signin, signout, and email verification
 class AuthService {
@@ -63,6 +65,8 @@ class AuthService {
       );
 
       if (response.user != null) {
+        // Register FCM token for push notifications
+        await FCMService.instance.registerToken(response.user!.id);
         return response;
       } else {
         throw Exception('Login failed: No user returned');
@@ -77,6 +81,10 @@ class AuthService {
   /// Sign out current user
   Future<void> signOut() async {
     try {
+      // Unregister FCM token before signing out
+      if (currentUser != null) {
+        await FCMService.instance.unregisterToken(currentUser!.id);
+      }
       await _client.auth.signOut();
     } on AuthException catch (e) {
       throw Exception('Signout failed: ${e.message}');
