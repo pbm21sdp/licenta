@@ -352,4 +352,85 @@ class PetService {
       return false;
     }
   }
+
+  /// Fetches a single pet by ID regardless of availability status
+  /// Used for viewing pet details in application history
+  Future<Map<String, dynamic>?> getPetById(String petId) async {
+    try {
+      final response = await _supabase
+          .from('pets')
+          .select('''
+            *,
+            pet_gallery (
+              id,
+              image_url,
+              image_semantic_label,
+              display_order
+            ),
+            shelter_profiles (
+              id,
+              name
+            )
+          ''')
+          .eq('id', petId)
+          .maybeSingle();
+
+      if (response == null) return null;
+
+      final pet = Map<String, dynamic>.from(response);
+
+      // Get primary image from pet_gallery or fallback to pet's image_url
+      String primaryImageUrl = pet['image_url'] as String? ?? '';
+      String primarySemanticLabel =
+          pet['image_semantic_label'] as String? ?? 'Pet photo';
+
+      final gallery = pet['pet_gallery'] as List?;
+      if (gallery != null && gallery.isNotEmpty) {
+        final sortedGallery = List<Map<String, dynamic>>.from(gallery);
+        sortedGallery.sort(
+          (a, b) => (a['display_order'] as int).compareTo(
+            b['display_order'] as int,
+          ),
+        );
+        primaryImageUrl =
+            sortedGallery.first['image_url'] as String? ?? primaryImageUrl;
+        primarySemanticLabel =
+            sortedGallery.first['image_semantic_label'] as String? ??
+            primarySemanticLabel;
+      }
+
+      // Format age string
+      final ageYears = pet['age_years'] as int? ?? 0;
+      String ageString;
+      if (ageYears == 1) {
+        ageString = '1 year old';
+      } else if (ageYears < 1) {
+        ageString = '${ageYears * 12} months old';
+      } else {
+        ageString = '$ageYears years old';
+      }
+
+      return {
+        'id': pet['id'],
+        'name': pet['name'] ?? 'Unknown',
+        'breed': pet['breed'] ?? 'Mixed Breed',
+        'age': ageString,
+        'age_years': ageYears,
+        'gender': pet['gender'] ?? 'Unknown',
+        'species': pet['species'] ?? 'Unknown',
+        'description': pet['description'] ?? '',
+        'health_status': pet['health_status'] ?? '',
+        'image_url': primaryImageUrl,
+        'image_semantic_label': primarySemanticLabel,
+        'shelter_id': pet['shelter_id'],
+        'is_available': pet['is_available'] ?? false,
+        'created_at': pet['created_at'],
+        'updated_at': pet['updated_at'],
+        'pet_gallery': gallery ?? [],
+        'shelter_profiles': pet['shelter_profiles'],
+      };
+    } catch (e) {
+      return null;
+    }
+  }
 }

@@ -272,13 +272,8 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         Map<String, dynamic>? petDetails;
         if (app['pet_id'] != null) {
           try {
-            // Use getAvailablePets to fetch pet details
-            final pets = await _petService.getAvailablePets();
-            petDetails = pets.firstWhere(
-              (pet) => pet['id'] == app['pet_id'],
-              orElse: () => {},
-            );
-            if (petDetails.isEmpty ?? true) petDetails = null;
+            // Use getPetById to fetch pet details regardless of availability
+            petDetails = await _petService.getPetById(app['pet_id'] as String);
           } catch (e) {
             debugPrint('Failed to fetch pet details: $e');
           }
