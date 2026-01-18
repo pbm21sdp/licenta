@@ -103,7 +103,7 @@ router.post(
  * @desc    Login with MFA
  * @access  Public
  */
-router.post('/mfa/login', validateMFAToken, authController.loginWithMFA);
+router.post('/mfa/login', validateMFAToken, authController.mfaLogin);
 
 // ==========================================
 // OAUTH ROUTES
