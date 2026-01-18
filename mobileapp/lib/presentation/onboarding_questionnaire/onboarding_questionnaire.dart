@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
+import '../../services/preference_service.dart';
+import '../../services/api_client.dart';
 import './widgets/children_inquiry_widget.dart';
 import './widgets/existing_pets_widget.dart';
 import './widgets/garden_option_widget.dart';
@@ -22,6 +24,10 @@ class _OnboardingQuestionnaireState extends State<OnboardingQuestionnaire>
   late PageController _pageController;
   late AnimationController _animationController;
   int _currentStep = 0;
+  bool _isSaving = false;
+
+  // Service pentru salvarea preferințelor
+  final PreferenceService _preferenceService = PreferenceService();
 
   // Step 1: Pet type preference
   String? _selectedPetType;
@@ -104,7 +110,41 @@ class _OnboardingQuestionnaireState extends State<OnboardingQuestionnaire>
     ).pushNamedAndRemoveUntil('/main-pets-screen', (route) => false);
   }
 
-  void _completeOnboarding() {
+  Future<void> _completeOnboarding() async {
+    if (_isSaving) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    // Pregătește datele preferințelor folosind UserPreferences
+    final preferences = UserPreferences(
+      preferredPetTypes: _selectedPetType != null ? [_selectedPetType!] : null,
+      hasGarden: _selectedGardenType != 'No Garden',
+      hasChildren: _hasChildren,
+      childrenAges: _childrenAgeRange != null ? [_childrenAgeRange!] : null,
+      hasOtherPets: _existingPets.isNotEmpty,
+      otherPetTypes: _existingPets.isNotEmpty ? _existingPets : null,
+    );
+
+    try {
+      // Salvează preferințele în backend
+      await _preferenceService.savePreferences(preferences);
+      print('Preferences saved successfully');
+    } on ApiException catch (e) {
+      print('API Error saving preferences: ${e.message}');
+      // Continuă oricum - preferințele pot fi salvate ulterior
+    } catch (e) {
+      print('Error saving preferences: $e');
+      // Continuă oricum - preferințele pot fi salvate ulterior
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSaving = false;
+    });
+
     // Show celebration animation
     showDialog(
       context: context,
@@ -542,8 +582,19 @@ class _OnboardingQuestionnaireState extends State<OnboardingQuestionnaire>
             Expanded(
               flex: _currentStep > 0 ? 1 : 2,
               child: ElevatedButton(
-                onPressed: _isStepValid() ? _nextStep : null,
-                child: Text(_currentStep == 3 ? 'Complete Setup' : 'Next'),
+                onPressed: _isStepValid() && !_isSaving ? _nextStep : null,
+                child: _isSaving
+                    ? SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      )
+                    : Text(_currentStep == 3 ? 'Complete Setup' : 'Next'),
               ),
             ),
           ],

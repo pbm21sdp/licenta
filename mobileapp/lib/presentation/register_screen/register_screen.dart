@@ -3,6 +3,8 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../../services/auth_service.dart';
+import '../../services/api_client.dart';
 
 /// Register Screen for new user account creation
 /// Implements progressive form validation with real-time feedback
@@ -19,11 +21,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _nameController = TextEditingController();
+
+  // Auth service pentru înregistrare reală
+  final AuthService _authService = AuthService();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _termsAccepted = false;
   bool _isLoading = false;
+  String? _errorMessage;
 
   // Validation states
   bool _emailValid = false;
@@ -40,6 +47,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _nameController.dispose();
     super.dispose();
   }
 
@@ -80,47 +88,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _handleRegister() async {
     if (!_isFormValid) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
     try {
-      // Simulate account creation
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (!mounted) return;
-
-      // Show success message briefly
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Account created successfully!',
-            style: Theme.of(context).snackBarTheme.contentTextStyle,
-          ),
-          backgroundColor: Theme.of(context).colorScheme.tertiary,
-          duration: const Duration(seconds: 1),
-        ),
+      // Apel real la API pentru înregistrare
+      final response = await _authService.register(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _passwordController.text,
       );
 
-      // Navigate to onboarding after brief delay
-      await Future.delayed(const Duration(milliseconds: 1500));
-
       if (!mounted) return;
 
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pushReplacementNamed('/onboarding-questionnaire');
+      if (response.success) {
+        // Afișează mesaj de succes
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              response.message,
+              style: Theme.of(context).snackBarTheme.contentTextStyle,
+            ),
+            backgroundColor: Theme.of(context).colorScheme.tertiary,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        // Navighează la onboarding
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (!mounted) return;
+
+        Navigator.of(
+          context,
+          rootNavigator: true,
+        ).pushReplacementNamed('/onboarding-questionnaire');
+      } else {
+        setState(() {
+          _errorMessage = response.message;
+        });
+      }
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = e.message;
+      });
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Registration failed. Please try again.',
-            style: Theme.of(context).snackBarTheme.contentTextStyle,
-          ),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
-      );
+      setState(() {
+        _errorMessage = 'A apărut o eroare. Verifică conexiunea la internet.';
+      });
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -177,6 +196,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
 
                   SizedBox(height: 4.h),
+
+                  // Error message
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: EdgeInsets.all(3.w),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(2.w),
+                        border: Border.all(
+                          color: theme.colorScheme.error.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          CustomIconWidget(
+                            iconName: 'error_outline',
+                            color: theme.colorScheme.error,
+                            size: 20,
+                          ),
+                          SizedBox(width: 2.w),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                  ],
+
+                  // Name field
+                  TextFormField(
+                    controller: _nameController,
+                    keyboardType: TextInputType.name,
+                    textInputAction: TextInputAction.next,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'Full Name',
+                      hintText: 'Enter your full name',
+                      prefixIcon: Padding(
+                        padding: EdgeInsets.all(3.w),
+                        child: CustomIconWidget(
+                          iconName: 'person',
+                          color: theme.colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 3.h),
 
                   // Email field
                   TextFormField(

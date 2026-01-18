@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/app_export.dart';
 
 /// Minimalist Welcome Screen
 /// Clean design with pet illustration and teal accent buttons

@@ -3,6 +3,8 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
+import '../../services/auth_service.dart';
+import '../../services/api_client.dart';
 
 /// Login Screen for pet adoption app authentication
 /// Implements secure email/password authentication with mobile-optimized input
@@ -27,9 +29,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Mock credentials for authentication
-  final String _mockEmail = "user@petadoption.com";
-  final String _mockPassword = "PetLover123";
+  // Auth service pentru autentificare reală
+  final AuthService _authService = AuthService();
 
   @override
   void dispose() {
@@ -78,31 +79,74 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Simulate authentication delay
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      // Call real API pentru autentificare
+      final response = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
-    // Check credentials
-    if (_emailController.text.trim() == _mockEmail &&
-        _passwordController.text == _mockPassword) {
-      // Success - navigate to main pets screen
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).pushReplacementNamed('/main-pets-screen');
+
+        if (response.success) {
+          // Verifică dacă necesită MFA
+          if (response.requiresMFA == true) {
+            // TODO: Navighează la ecranul MFA
+            _showMFADialog();
+          } else {
+            // Success - navigează la ecranul principal
+            Navigator.of(
+              context,
+              rootNavigator: true,
+            ).pushReplacementNamed('/main-pets-screen');
+          }
+        } else {
+          setState(() {
+            _errorMessage = response.message;
+          });
+        }
       }
-    } else {
-      // Failed authentication
+    } on ApiException catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Invalid email or password. Please try again.';
+          _errorMessage = e.message;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'A apărut o eroare. Verifică conexiunea la internet.';
         });
       }
     }
+  }
+
+  /// Afișează dialogul pentru MFA
+  void _showMFADialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Verificare în doi pași',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        content: Text(
+          'Contul tău are activată verificarea în doi pași. Introdu codul din aplicația de autentificare.',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Handles forgot password navigation
