@@ -146,6 +146,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   Future<void> _loadAdoptions() async {
     try {
       final response = await _adoptionService.getMyAdoptions();
+      print('Adoptions loaded: ${response.applications.length} applications');
+      for (var app in response.applications) {
+        print('  - ${app.petName} (${app.status})');
+      }
       if (mounted) {
         setState(() {
           _applicationHistory = response.applications.map((adoption) => _adoptionToMap(adoption)).toList();
@@ -153,6 +157,8 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
       }
     } on ApiException catch (e) {
       print('API Error loading adoptions: ${e.message}');
+    } catch (e) {
+      print('Error loading adoptions: $e');
     }
   }
 
