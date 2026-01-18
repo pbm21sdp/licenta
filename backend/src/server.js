@@ -11,6 +11,11 @@ require('dotenv').config(); // citeste fisierul .env si incarca variabilele (POR
 
 // Import pentru routes
 const authRoutes = require('./routes/auth.routes'); // importa toate rutele de autentificare (login, register, etc.)
+const petRoutes = require('./routes/pet.routes'); // importa rutele pentru animale
+const favoriteRoutes = require('./routes/favorite.routes'); // importa rutele pentru favorite
+const adoptionRoutes = require('./routes/adoption.routes'); // importa rutele pentru adoptii
+const preferenceRoutes = require('./routes/preference.routes'); // importa rutele pentru preferinte utilizator
+const adminRoutes = require('./routes/admin.routes'); // importa rutele pentru administrare
 
 // Import pentru database
 const { pool } = require('./config/database'); // importa conexiunea la PostgreSQL database
@@ -24,8 +29,8 @@ app.use(helmet()); // adauga headers HTTP de securitate automat
 // CORS - Configure Cross-Origin Resource Sharing
 const corsOptions = {
   origin: process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',') // permite doar unor anumite URL-uri sa acceseze API-ul, pentru ca flutter ruleaza pe alt port si trebuie permis explicit 
-    : ['http://localhost:3000', 'http://localhost:8080'],
+    ? process.env.CORS_ORIGIN.split(',') // permite doar unor anumite URL-uri sa acceseze API-ul, pentru ca flutter ruleaza pe alt port si trebuie permis explicit
+    : true, // În development, permite toate originile (Flutter web rulează pe porturi random)
   credentials: true, // permite cookies si autentificare cross-origin
   optionsSuccessStatus: 200,
 };
@@ -92,6 +97,21 @@ app.get('/', (req, res) => {
 // Auth routes (with rate limiting)
 app.use(`/api/${process.env.API_VERSION || 'v1'}/auth`, authLimiter, authRoutes);
 
+// Pet routes (public + protected)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/pets`, petRoutes);
+
+// Favorite routes (protected)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/favorites`, favoriteRoutes);
+
+// Adoption routes (protected)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/adoptions`, adoptionRoutes);
+
+// User preferences routes (protected)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/preferences`, preferenceRoutes);
+
+// Admin routes (protected + admin only)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/admin`, adminRoutes);
+
 
 // 404 handler - Route not found
 app.use((req, res) => {
@@ -128,15 +148,20 @@ pool
     
     // Start server
     app.listen(PORT, () => {
-      console.log(`                                            
-PET ADOPTION API SERVER STARTED           
-                                                          
-Environment: ${process.env.NODE_ENV || 'development'}                              
-Port:        ${PORT}                                        
-API Version: ${process.env.API_VERSION || 'v1'}                                     
-                                                         
-Health:      http://localhost:${PORT}/health             
-Auth:        http://localhost:${PORT}/api/v1/auth        
+      console.log(`
+PET ADOPTION API SERVER STARTED
+
+Environment: ${process.env.NODE_ENV || 'development'}
+Port:        ${PORT}
+API Version: ${process.env.API_VERSION || 'v1'}
+
+Health:      http://localhost:${PORT}/health
+Auth:        http://localhost:${PORT}/api/v1/auth
+Pets:        http://localhost:${PORT}/api/v1/pets
+Favorites:   http://localhost:${PORT}/api/v1/favorites
+Adoptions:   http://localhost:${PORT}/api/v1/adoptions
+Preferences: http://localhost:${PORT}/api/v1/preferences
+Admin:       http://localhost:${PORT}/api/v1/admin
 
       `);
     });
