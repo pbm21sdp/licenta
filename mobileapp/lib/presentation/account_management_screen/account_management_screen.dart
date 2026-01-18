@@ -3,8 +3,16 @@ import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_image_widget.dart';
+import '../../widgets/custom_icon_widget.dart';
+import '../../services/auth_service.dart';
+import '../../services/preference_service.dart';
+import '../../services/adoption_service.dart';
+import '../../services/api_client.dart';
+import '../../data/models/user_model.dart';
+import '../../data/models/adoption_model.dart';
 import './widgets/adoption_status_tracking_widget.dart';
 import './widgets/application_history_card_widget.dart';
+import './widgets/edit_profile_modal_widget.dart';
 import './widgets/preference_editor_modal_widget.dart';
 import './widgets/saved_preferences_card_widget.dart';
 import './widgets/settings_section_widget.dart';
@@ -22,114 +30,196 @@ class AccountManagementScreen extends StatefulWidget {
 }
 
 class _AccountManagementScreenState extends State<AccountManagementScreen> {
-  bool _isLoading = false;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
+
+  // Services
+  final AuthService _authService = AuthService();
+  final PreferenceService _preferenceService = PreferenceService();
+  final AdoptionService _adoptionService = AdoptionService();
 
   // User profile data
-  final Map<String, dynamic> _userProfile = {
-    "name": "Sarah Johnson",
-    "email": "user@petadoption.com",
-    "memberSince": DateTime(2024, 1, 15),
-    "avatar":
-        "https://img.rocket.new/generatedImages/rocket_gen_img_1bb0109eb-1763295676769.png",
-    "avatarSemanticLabel":
-        "Profile photo of woman with brown hair smiling at camera",
+  UserModel? _user;
+  Map<String, dynamic> _userProfile = {
+    "name": "Loading...",
+    "email": "",
+    "memberSince": DateTime.now(),
+    "avatar": "",
+    "avatarSemanticLabel": "User profile photo",
   };
 
   // Saved preferences from onboarding
   Map<String, dynamic> _savedPreferences = {
-    "petType": "Dog",
-    "gardenAccess": "Yes, Private Garden",
-    "hasChildren": true,
-    "childrenAgeRange": "6-12 years",
-    "existingPets": ["Dog", "Cat"],
-    "petCounts": {"Dog": 1, "Cat": 1},
+    "petType": "Not set",
+    "gardenAccess": "Not set",
+    "hasChildren": false,
+    "childrenAgeRange": "",
+    "existingPets": <String>[],
+    "petCounts": <String, int>{},
   };
 
   // Application history data
-  final List<Map<String, dynamic>> _applicationHistory = [
-    {
-      "id": 1,
-      "petName": "Luna",
-      "petImage":
-          "https://images.unsplash.com/photo-1692050751434-e72e29ddcc5d",
-      "petImageSemanticLabel":
-          "Golden Retriever dog with fluffy golden fur sitting outdoors",
-      "applicationDate": DateTime.now().subtract(Duration(days: 3)),
-      "status": "Pending",
-      "statusColor": Color(0xFFFFE66D),
-      "shelterName": "Happy Paws Shelter",
-      "shelterContact": "(555) 123-4567",
-      "estimatedResponse": "2-3 business days",
-      "timeline": [
-        {"step": "Application Submitted", "completed": true},
-        {"step": "Under Review", "completed": true},
-        {"step": "Shelter Contact", "completed": false},
-        {"step": "Home Visit", "completed": false},
-        {"step": "Approval Decision", "completed": false},
-      ],
-    },
-    {
-      "id": 2,
-      "petName": "Max",
-      "petImage":
-          "https://images.unsplash.com/photo-1652032252208-676df67e89f2",
-      "petImageSemanticLabel":
-          "Black Labrador dog with shiny coat sitting on grass",
-      "applicationDate": DateTime.now().subtract(Duration(days: 15)),
-      "status": "Approved",
-      "statusColor": Color(0xFF4ECDC4),
-      "shelterName": "Loving Hearts Animal Rescue",
-      "shelterContact": "(555) 987-6543",
-      "estimatedResponse": "Approved - Schedule pickup",
-      "timeline": [
-        {"step": "Application Submitted", "completed": true},
-        {"step": "Under Review", "completed": true},
-        {"step": "Shelter Contact", "completed": true},
-        {"step": "Home Visit", "completed": true},
-        {"step": "Approval Decision", "completed": true},
-      ],
-    },
-    {
-      "id": 3,
-      "petName": "Bella",
-      "petImage":
-          "https://images.unsplash.com/photo-1706534887625-f37ae2832c30",
-      "petImageSemanticLabel":
-          "Beagle dog with brown and white coat sitting on grass",
-      "applicationDate": DateTime.now().subtract(Duration(days: 30)),
-      "status": "Declined",
-      "statusColor": Color(0xFFFF8E8E),
-      "shelterName": "Furry Friends Foundation",
-      "shelterContact": "(555) 456-7890",
-      "estimatedResponse": "Not approved - See feedback",
-      "timeline": [
-        {"step": "Application Submitted", "completed": true},
-        {"step": "Under Review", "completed": true},
-        {"step": "Shelter Contact", "completed": true},
-        {"step": "Home Visit", "completed": false},
-        {"step": "Approval Decision", "completed": true},
-      ],
-    },
-  ];
+  List<Map<String, dynamic>> _applicationHistory = [];
 
   @override
   void initState() {
     super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+      _errorMessage = null;
+    });
+
+    try {
+      // Încarcă datele în paralel
+      await Future.wait([
+        _loadUserProfile(),
+        _loadPreferences(),
+        _loadAdoptions(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading account data: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = 'Could not load account data. Please try again.';
+        });
+      }
+    }
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      if (user != null && mounted) {
+        setState(() {
+          _user = user;
+          _userProfile = {
+            "name": user.name ?? user.email.split('@')[0],
+            "email": user.email,
+            "memberSince": user.createdAt ?? DateTime.now(),
+            "avatar": user.avatarUrl ?? "",
+            "avatarSemanticLabel": "Profile photo of ${user.name ?? 'user'}",
+          };
+        });
+      }
+    } on ApiException catch (e) {
+      print('API Error loading profile: ${e.message}');
+    }
+  }
+
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await _preferenceService.getPreferences();
+      if (prefs != null && mounted) {
+        setState(() {
+          _savedPreferences = {
+            "petType": prefs.preferredPetTypes?.isNotEmpty == true
+                ? prefs.preferredPetTypes!.first
+                : 'Not set',
+            "gardenAccess": prefs.hasGarden == true ? 'Yes' : 'No',
+            "hasChildren": prefs.hasChildren ?? false,
+            "childrenAgeRange": prefs.childrenAges?.join(', ') ?? '',
+            "existingPets": prefs.otherPetTypes ?? <String>[],
+            "petCounts": <String, int>{},
+            "hasOtherPets": prefs.hasOtherPets ?? false,
+          };
+        });
+      }
+    } on ApiException catch (e) {
+      print('API Error loading preferences: ${e.message}');
+    }
+  }
+
+  Future<void> _loadAdoptions() async {
+    try {
+      final response = await _adoptionService.getMyAdoptions();
+      if (mounted) {
+        setState(() {
+          _applicationHistory = response.applications.map((adoption) => _adoptionToMap(adoption)).toList();
+        });
+      }
+    } on ApiException catch (e) {
+      print('API Error loading adoptions: ${e.message}');
+    }
+  }
+
+  Map<String, dynamic> _adoptionToMap(AdoptionModel adoption) {
+    Color statusColor;
+    switch (adoption.status.toLowerCase()) {
+      case 'pending':
+        statusColor = const Color(0xFFFFE66D);
+        break;
+      case 'approved':
+        statusColor = const Color(0xFF4ECDC4);
+        break;
+      case 'rejected':
+      case 'declined':
+        statusColor = const Color(0xFFFF8E8E);
+        break;
+      default:
+        statusColor = Colors.grey;
+    }
+
+    return {
+      "id": adoption.id,
+      "petName": adoption.petName,
+      "petImage": adoption.petPhoto ?? "",
+      "petImageSemanticLabel": "Photo of ${adoption.petName}",
+      "applicationDate": adoption.createdAt ?? DateTime.now(),
+      "status": adoption.statusDisplay,
+      "statusColor": statusColor,
+      "shelterName": "Pet Shelter",
+      "shelterContact": adoption.phone ?? "",
+      "estimatedResponse": _getEstimatedResponse(adoption.status),
+      "timeline": _buildTimeline(adoption.status),
+    };
+  }
+
+  String _getEstimatedResponse(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return '2-3 business days';
+      case 'approved':
+        return 'Approved - Schedule pickup';
+      case 'rejected':
+      case 'declined':
+        return 'Not approved - See feedback';
+      default:
+        return 'Processing';
+    }
+  }
+
+  List<Map<String, dynamic>> _buildTimeline(String status) {
+    final steps = [
+      {"step": "Application Submitted", "completed": true},
+      {"step": "Under Review", "completed": status != 'pending'},
+      {"step": "Shelter Contact", "completed": status == 'approved' || status == 'rejected'},
+      {"step": "Home Visit", "completed": status == 'approved'},
+      {"step": "Approval Decision", "completed": status == 'approved' || status == 'rejected'},
+    ];
+    return steps;
   }
 
   Future<void> _refreshData() async {
-    setState(() {
-      _isLoading = true;
-    });
-    await Future.delayed(Duration(seconds: 1));
-    setState(() {
-      _isLoading = false;
-    });
-    if (mounted) {
+    await _loadData();
+    if (mounted && !_hasError) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Profile data updated'),
-          duration: Duration(seconds: 2),
+          content: const Text('Profile data updated'),
+          duration: const Duration(seconds: 2),
           backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
@@ -154,6 +244,53 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               duration: Duration(seconds: 2),
             ),
           );
+        },
+      ),
+    );
+  }
+
+  void _showEditProfile() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EditProfileModalWidget(
+        currentProfile: _userProfile,
+        onSave: (name) async {
+          try {
+            final updatedUser = await _authService.updateProfile(name: name);
+            if (updatedUser != null && mounted) {
+              setState(() {
+                _user = updatedUser;
+                _userProfile = {
+                  "name": updatedUser.name,
+                  "email": updatedUser.email,
+                  "memberSince": updatedUser.createdAt ?? DateTime.now(),
+                  "avatar": updatedUser.avatarUrl ?? "",
+                  "avatarSemanticLabel": "Profile photo of ${updatedUser.name}",
+                };
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Profile updated successfully'),
+                  backgroundColor: Color(0xFF4ECDC4),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              return true;
+            }
+            return false;
+          } on ApiException catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(e.message),
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+              );
+            }
+            return false;
+          }
         },
       ),
     );
@@ -452,14 +589,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               SizedBox(height: 2.h),
               UserProfileHeaderWidget(
                 userProfile: _userProfile,
-                onEditProfile: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Edit profile coming soon'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
+                onEditProfile: _showEditProfile,
               ),
               SizedBox(height: 2.h),
               SavedPreferencesCardWidget(
