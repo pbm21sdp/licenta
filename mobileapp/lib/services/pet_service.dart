@@ -17,6 +17,7 @@ class PetService {
   /// Fetches available pets for swiping, excluding:
   /// - Pets already favorited by the user
   /// - Pets currently on cooldown
+  /// - Pets with active adoption applications (pending, under_review, interview, approved)
   /// - Pets not matching filter criteria
   Future<List<Map<String, dynamic>>> getAvailablePets({
     String? userId,
@@ -73,11 +74,24 @@ class PetService {
             .map((e) => e['pet_id'] as String)
             .toSet();
 
-        // Filter out favorited and cooldown pets
+        // Get pets with active applications (pending, under_review, interview, approved)
+        // Excluded statuses: rejected, withdrawn (user can see pet again)
+        final activeApplicationsResponse = await _supabase
+            .from('adoption_applications')
+            .select('pet_id')
+            .eq('user_id', userId)
+            .not('application_status', 'in', '(rejected,withdrawn)');
+
+        final activeApplicationPetIds = (activeApplicationsResponse as List)
+            .map((e) => e['pet_id'] as String)
+            .toSet();
+
+        // Filter out favorited, cooldown, and active application pets
         pets = pets.where((pet) {
           final petId = pet['id'] as String;
           return !favoritedPetIds.contains(petId) &&
-              !cooldownPetIds.contains(petId);
+              !cooldownPetIds.contains(petId) &&
+              !activeApplicationPetIds.contains(petId);
         }).toList();
       }
 
