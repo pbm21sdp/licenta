@@ -3,7 +3,11 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 class GeminiService {
   static final GeminiService _instance = GeminiService._internal();
   late final GenerativeModel _model;
-  static const String apiKey = String.fromEnvironment('GEMINI_API_KEY');
+
+  // API key - preferabil din environment, fallback la hardcoded
+  static const String _envApiKey = String.fromEnvironment('GEMINI_API_KEY');
+  static const String _defaultApiKey = 'AIzaSyBKvcOC1braWKp3JiAYXRAmvcXWeFC3xhc';
+  static String get apiKey => _envApiKey.isNotEmpty ? _envApiKey : _defaultApiKey;
 
   factory GeminiService() => _instance;
 
@@ -12,9 +16,6 @@ class GeminiService {
   }
 
   void _initializeService() {
-    if (apiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY must be provided via --dart-define');
-    }
 
     _model = GenerativeModel(
       model: 'gemini-2.5-flash',
