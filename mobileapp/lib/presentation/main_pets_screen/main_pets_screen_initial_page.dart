@@ -31,7 +31,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
   bool _isLoading = true;
   int _currentCardIndex = 0;
   List<Map<String, dynamic>> _petData = [];
-  final List<String> _undoQueue = [];
+  final List<Map<String, String>> _undoQueue = [];
   static const int maxUndoQueueSize = 5;
   String? _currentUserId;
   String? _errorMessage;
@@ -172,11 +172,14 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
     final pet = _petData[previousIndex];
     final petId = pet['id'] as String;
 
-    // Add to undo queue
+    // Determine the action type
+    final actionType = direction == CardSwiperDirection.right ? 'like' : 'skip';
+
+    // Add to undo queue with action type
     if (_undoQueue.length >= maxUndoQueueSize) {
       _undoQueue.removeAt(0);
     }
-    _undoQueue.add(petId);
+    _undoQueue.add({'petId': petId, 'action': actionType});
 
     if (direction == CardSwiperDirection.right) {
       _handleLike(petId);
@@ -184,11 +187,12 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
       _handleSkip(petId);
     }
 
-    if (currentIndex != null) {
-      setState(() {
+    // Always update state to refresh undo button and card index
+    setState(() {
+      if (currentIndex != null) {
         _currentCardIndex = currentIndex;
-      });
-    }
+      }
+    });
 
     HapticFeedback.lightImpact();
     return true;
@@ -256,6 +260,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
 
   Future<void> _handleLikeButton() async {
     if (_currentCardIndex >= _petData.length || _isProcessingSwipe) return;
+    if (_currentUserId == null) return;
 
     setState(() {
       _isProcessingSwipe = true;
@@ -272,6 +277,12 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
         petId: petId,
         interactionType: 'like',
       );
+
+      // Add to undo queue (for button-triggered swipes)
+      if (_undoQueue.length >= maxUndoQueueSize) {
+        _undoQueue.removeAt(0);
+      }
+      _undoQueue.add({'petId': petId, 'action': 'like'});
 
       // Only swipe if operation succeeded
       if (mounted) {
@@ -318,6 +329,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
 
   Future<void> _handleSkipButton() async {
     if (_currentCardIndex >= _petData.length || _isProcessingSwipe) return;
+    if (_currentUserId == null) return;
 
     setState(() {
       _isProcessingSwipe = true;
@@ -333,6 +345,12 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
         petId: petId,
         interactionType: 'skip',
       );
+
+      // Add to undo queue (for button-triggered swipes)
+      if (_undoQueue.length >= maxUndoQueueSize) {
+        _undoQueue.removeAt(0);
+      }
+      _undoQueue.add({'petId': petId, 'action': 'skip'});
 
       // Only swipe if operation succeeded
       if (mounted) {
@@ -354,17 +372,48 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
     }
   }
 
-  void _handleUndo() {
-    if (_undoQueue.isEmpty) return;
+  Future<void> _handleUndo() async {
+    if (_undoQueue.isEmpty || _currentUserId == null) return;
 
-    _cardController.undo();
-    HapticFeedback.mediumImpact();
-    setState(() {
-      _undoQueue.removeLast();
-      if (_currentCardIndex > 0) {
-        _currentCardIndex--;
+    final lastAction = _undoQueue.removeLast();
+    final petId = lastAction['petId']!;
+    final action = lastAction['action']!;
+
+    try {
+      // Reverse the database action by removing the interaction
+      // Uses matching criteria to handle race conditions
+      await _petService.removeInteraction(
+        userId: _currentUserId!,
+        petId: petId,
+        interactionType: action,
+      );
+
+      // If it was a like, also remove from favorites
+      if (action == 'like') {
+        await _petService.removeFromFavorites(
+          userId: _currentUserId!,
+          petId: petId,
+        );
       }
-    });
+
+      // Restore the card in the UI
+      _cardController.undo();
+      HapticFeedback.mediumImpact();
+
+      setState(() {
+        if (_currentCardIndex > 0) {
+          _currentCardIndex--;
+        }
+      });
+    } catch (e) {
+      // Re-add to queue if undo failed
+      _undoQueue.add(lastAction);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to undo: $e')),
+        );
+      }
+    }
   }
 
   void _navigateToPetDetail(Map<String, dynamic> pet) {
@@ -505,6 +554,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
                         controller: _cardController,
                         cardsCount: _petData.length,
                         onSwipe: _onSwipe,
+                        isLoop: false,
                         numberOfCardsDisplayed: _petData.length < 3
                             ? _petData.length
                             : 3,

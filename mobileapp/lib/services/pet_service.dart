@@ -51,7 +51,24 @@ class PetService {
         response,
       );
 
-      // If user is authenticated, filter out favorited and cooldown pets
+      // Get pets with active applications from ANY user (pending, under_review, interview, approved)
+      // These pets should be hidden from all users since adoption is in progress
+      // Excluded statuses: rejected, withdrawn (pet is available again)
+      // Using RPC function with SECURITY DEFINER to bypass RLS restrictions
+      final activeApplicationsResponse = await _supabase
+          .rpc('get_pets_with_active_applications');
+
+      final activeApplicationPetIds = (activeApplicationsResponse as List)
+          .map((e) => e as String)
+          .toSet();
+
+      // Filter out pets with active applications (applies to all users)
+      pets = pets.where((pet) {
+        final petId = pet['id'] as String;
+        return !activeApplicationPetIds.contains(petId);
+      }).toList();
+
+      // If user is authenticated, also filter out favorited and cooldown pets
       if (userId != null) {
         // Get favorited pet IDs
         final favoritesResponse = await _supabase
@@ -63,7 +80,7 @@ class PetService {
             .map((e) => e['pet_id'] as String)
             .toSet();
 
-        // Get pets on cooldown
+        // Get pets on cooldown (skipped pets with active cooldown)
         final cooldownResponse = await _supabase
             .from('pet_interactions')
             .select('pet_id, cooldown_until')
@@ -74,24 +91,11 @@ class PetService {
             .map((e) => e['pet_id'] as String)
             .toSet();
 
-        // Get pets with active applications (pending, under_review, interview, approved)
-        // Excluded statuses: rejected, withdrawn (user can see pet again)
-        final activeApplicationsResponse = await _supabase
-            .from('adoption_applications')
-            .select('pet_id')
-            .eq('user_id', userId)
-            .not('application_status', 'in', '(rejected,withdrawn)');
-
-        final activeApplicationPetIds = (activeApplicationsResponse as List)
-            .map((e) => e['pet_id'] as String)
-            .toSet();
-
-        // Filter out favorited, cooldown, and active application pets
+        // Filter out favorited and cooldown pets
         pets = pets.where((pet) {
           final petId = pet['id'] as String;
           return !favoritedPetIds.contains(petId) &&
-              !cooldownPetIds.contains(petId) &&
-              !activeApplicationPetIds.contains(petId);
+              !cooldownPetIds.contains(petId);
         }).toList();
       }
 
@@ -216,31 +220,62 @@ class PetService {
   }
 
   /// Adds a pet to user's favorites
+  /// Uses upsert to prevent duplicate key errors when the same pet is liked again
   Future<void> addToFavorites({
     required String userId,
     required String petId,
   }) async {
     try {
-      await _supabase.from('user_favorites').insert({
-        'user_id': userId,
-        'pet_id': petId,
-      });
+      await _supabase.from('user_favorites').upsert(
+        {'user_id': userId, 'pet_id': petId},
+        onConflict: 'user_id,pet_id',
+      );
     } catch (e) {
       throw Exception('Failed to add to favorites: $e');
     }
   }
 
-  /// Removes a pet from user's favorites
+  /// Removes interaction(s) for a pet by type (for undo functionality)
+  /// Deletes by matching criteria to handle race conditions where
+  /// the insert might not have completed yet
+  Future<void> removeInteraction({
+    required String userId,
+    required String petId,
+    required String interactionType,
+  }) async {
+    try {
+      await _supabase
+          .from('pet_interactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('pet_id', petId)
+          .eq('interaction_type', interactionType);
+    } catch (e) {
+      throw Exception('Failed to remove interaction: $e');
+    }
+  }
+
+  /// Removes a pet from user's favorites and deletes the 'like' interaction
+  /// so the pet can reappear in the swipe feed
   Future<void> removeFromFavorites({
     required String userId,
     required String petId,
   }) async {
     try {
+      // Remove from favorites
       await _supabase
           .from('user_favorites')
           .delete()
           .eq('user_id', userId)
           .eq('pet_id', petId);
+
+      // Also delete the 'like' interaction so pet can reappear in feed
+      await _supabase
+          .from('pet_interactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('pet_id', petId)
+          .eq('interaction_type', 'like');
     } catch (e) {
       throw Exception('Failed to remove from favorites: $e');
     }
