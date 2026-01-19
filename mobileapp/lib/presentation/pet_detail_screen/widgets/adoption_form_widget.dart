@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
+import '../../../services/adoption_service.dart';
+import '../../../services/api_client.dart';
+import '../../../data/models/adoption_model.dart';
+
 class AdoptionFormWidget extends StatefulWidget {
+  final int petId;
   final String petName;
 
-  const AdoptionFormWidget({super.key, required this.petName});
+  const AdoptionFormWidget({
+    super.key,
+    required this.petId,
+    required this.petName,
+  });
 
   @override
   State<AdoptionFormWidget> createState() => _AdoptionFormWidgetState();
@@ -16,11 +25,18 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _postalCodeController = TextEditingController();
+  final _reasonController = TextEditingController();
+  final AdoptionService _adoptionService = AdoptionService();
+
   String _housingType = 'House';
   String _hasGarden = 'Yes';
+  String _hasChildren = 'No';
   String _hasPets = 'No';
   String _experience = 'First time';
   bool _isSubmitting = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -28,32 +44,79 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
+    _postalCodeController.dispose();
+    _reasonController.dispose();
     super.dispose();
   }
 
   Future<void> _submitForm() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isSubmitting = true;
-      });
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
-      await Future.delayed(Duration(seconds: 2));
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
 
-      setState(() {
-        _isSubmitting = false;
-      });
+    try {
+      final request = CreateAdoptionRequest(
+        petId: widget.petId,
+        fullName: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        city: _cityController.text.trim(),
+        postalCode: _postalCodeController.text.trim(),
+        housingType: _housingType.toLowerCase(),
+        hasYard: _hasGarden.toLowerCase(),
+        hasChildren: _hasChildren == 'Yes',
+        hasOtherPets: _hasPets == 'Yes',
+        previousPetExperience: _experience,
+        adoptionReason: _reasonController.text.trim().isNotEmpty
+            ? _reasonController.text.trim()
+            : 'I would like to adopt ${widget.petName}',
+      );
+
+      print('Submitting adoption request for pet ${widget.petId}');
+      final result = await _adoptionService.createAdoption(request);
 
       if (mounted) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Application submitted successfully! We\'ll contact you soon.',
+        setState(() {
+          _isSubmitting = false;
+        });
+
+        if (result.success) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Color(0xFF4ECDC4),
+              duration: Duration(seconds: 3),
             ),
-            backgroundColor: Color(0xFF4ECDC4),
-            duration: Duration(seconds: 3),
-          ),
-        );
+          );
+        } else {
+          setState(() {
+            _errorMessage = result.message;
+          });
+        }
+      }
+    } on ApiException catch (e) {
+      print('API Error submitting adoption: ${e.message}');
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = e.message;
+        });
+      }
+    } catch (e) {
+      print('Error submitting adoption: $e');
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+          _errorMessage = 'An unexpected error occurred. Please try again.';
+        });
       }
     }
   }
@@ -108,6 +171,33 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Error message
+                    if (_errorMessage != null) ...[
+                      Container(
+                        padding: EdgeInsets.all(3.w),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.error_outline, color: theme.colorScheme.error),
+                            SizedBox(width: 2.w),
+                            Expanded(
+                              child: Text(
+                                _errorMessage!,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.error,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 2.h),
+                    ],
+
                     Text(
                       'Contact Information',
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -192,6 +282,50 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                         return null;
                       },
                     ),
+                    SizedBox(height: 2.h),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextFormField(
+                            controller: _cityController,
+                            decoration: InputDecoration(
+                              labelText: 'City',
+                              hintText: 'City',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              prefixIcon: Icon(Icons.location_city_outlined),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                        SizedBox(width: 2.w),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _postalCodeController,
+                            decoration: InputDecoration(
+                              labelText: 'Postal Code',
+                              hintText: 'Code',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                     SizedBox(height: 3.h),
                     Text(
                       'Housing Situation',
@@ -201,7 +335,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      initialValue: _housingType,
+                      value: _housingType,
                       decoration: InputDecoration(
                         labelText: 'Housing Type',
                         border: OutlineInputBorder(
@@ -225,7 +359,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      initialValue: _hasGarden,
+                      value: _hasGarden,
                       decoration: InputDecoration(
                         labelText: 'Do you have a garden/yard?',
                         border: OutlineInputBorder(
@@ -249,14 +383,38 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 3.h),
                     Text(
-                      'Experience Assessment',
+                      'Household Information',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      initialValue: _hasPets,
+                      value: _hasChildren,
+                      decoration: InputDecoration(
+                        labelText: 'Do you have children at home?',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        prefixIcon: Icon(Icons.child_care_outlined),
+                      ),
+                      items: ['Yes', 'No']
+                          .map(
+                            (option) => DropdownMenuItem(
+                              value: option,
+                              child: Text(option),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _hasChildren = value ?? 'No';
+                        });
+                      },
+                    ),
+                    SizedBox(height: 2.h),
+                    DropdownButtonFormField<String>(
+                      value: _hasPets,
                       decoration: InputDecoration(
                         labelText: 'Do you currently have pets?',
                         border: OutlineInputBorder(
@@ -278,9 +436,16 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                         });
                       },
                     ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      'Experience Assessment',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      initialValue: _experience,
+                      value: _experience,
                       decoration: InputDecoration(
                         labelText: 'Pet Ownership Experience',
                         border: OutlineInputBorder(
@@ -302,6 +467,26 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                           _experience = value ?? 'First time';
                         });
                       },
+                    ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      'Why do you want to adopt ${widget.petName}?',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    TextFormField(
+                      controller: _reasonController,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Reason for Adoption',
+                        hintText: 'Tell us why you would be a great pet parent...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        alignLabelWithHint: true,
+                      ),
                     ),
                     SizedBox(height: 3.h),
                   ],

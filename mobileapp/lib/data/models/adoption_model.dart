@@ -208,13 +208,27 @@ class AdoptionsResponse {
   });
 
   factory AdoptionsResponse.fromJson(Map<String, dynamic> json) {
+    print('Parsing AdoptionsResponse: success=${json['success']}');
+    print('Data keys: ${json['data']?.keys}');
+    print('Applications raw: ${json['data']?['applications']}');
+
+    List<AdoptionModel> apps = [];
+    if (json['data']?['applications'] != null) {
+      final appList = json['data']['applications'] as List;
+      print('Found ${appList.length} applications to parse');
+      for (var a in appList) {
+        try {
+          apps.add(AdoptionModel.fromJson(a));
+        } catch (e) {
+          print('Error parsing application: $e');
+          print('Raw data: $a');
+        }
+      }
+    }
+
     return AdoptionsResponse(
       success: json['success'] ?? false,
-      applications: json['data']?['applications'] != null
-          ? (json['data']['applications'] as List)
-              .map((a) => AdoptionModel.fromJson(a))
-              .toList()
-          : [],
+      applications: apps,
       pagination: json['data']?['pagination'] != null
           ? PaginationInfo.fromJson(json['data']['pagination'])
           : null,

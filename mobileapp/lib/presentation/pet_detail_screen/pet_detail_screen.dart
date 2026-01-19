@@ -52,8 +52,10 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) =>
-          AdoptionFormWidget(petName: _petData?['name'] ?? ''),
+      builder: (context) => AdoptionFormWidget(
+        petId: _petData?['id'] as int? ?? 0,
+        petName: _petData?['name'] ?? '',
+      ),
     );
   }
 

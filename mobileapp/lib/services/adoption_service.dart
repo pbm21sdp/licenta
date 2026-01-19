@@ -34,13 +34,19 @@ class AdoptionService {
         queryParams['status'] = status;
       }
 
+      print('Fetching adoptions from: ${ApiConfig.adoptions}');
       final response = await _apiClient.get(
         ApiConfig.adoptions,
         queryParameters: queryParams,
       );
 
-      return AdoptionsResponse.fromJson(response.data);
+      print('Adoptions API response: ${response.data}');
+      final result = AdoptionsResponse.fromJson(response.data);
+      print('Parsed ${result.applications.length} applications');
+      return result;
     } on DioException catch (e) {
+      print('DioException fetching adoptions: ${e.message}');
+      print('Response: ${e.response?.data}');
       throw ApiException.fromDioError(e);
     }
   }
@@ -63,9 +69,12 @@ class AdoptionService {
   /// Trimite o cerere de adopție nouă
   Future<AdoptionResult> createAdoption(CreateAdoptionRequest request) async {
     try {
+      final requestData = request.toJson();
+      print('Adoption request data: $requestData');
+
       final response = await _apiClient.post(
         ApiConfig.adoptions,
-        data: request.toJson(),
+        data: requestData,
       );
 
       return AdoptionResult(
@@ -74,6 +83,16 @@ class AdoptionService {
         applicationId: response.data['data']?['application']?['id'],
       );
     } on DioException catch (e) {
+      print('Adoption DioException: ${e.response?.data}');
+      // Extrage mesajul de eroare detaliat
+      if (e.response?.data != null) {
+        final data = e.response!.data;
+        if (data['errors'] != null) {
+          final errors = data['errors'] as List;
+          final errorMessages = errors.map((e) => '${e['field']}: ${e['message']}').join(', ');
+          throw ApiException(message: errorMessages, statusCode: e.response?.statusCode);
+        }
+      }
       throw ApiException.fromDioError(e);
     }
   }

@@ -123,13 +123,38 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
   Future<void> _loadPreferences() async {
     try {
       final prefs = await _preferenceService.getPreferences();
+      print('Preferences loaded: $prefs');
       if (prefs != null && mounted) {
+        print('  - preferredPetTypes: ${prefs.preferredPetTypes}');
+        print('  - hasGarden: ${prefs.hasGarden}');
+        print('  - hasChildren: ${prefs.hasChildren}');
+
+        // Convertește tipul de pet din format API în format UI
+        String petTypeDisplay = 'Not set';
+        if (prefs.preferredPetTypes != null && prefs.preferredPetTypes!.isNotEmpty) {
+          if (prefs.preferredPetTypes!.contains('dog') && prefs.preferredPetTypes!.contains('cat')) {
+            petTypeDisplay = 'Both';
+          } else if (prefs.preferredPetTypes!.contains('dog')) {
+            petTypeDisplay = 'Dog';
+          } else if (prefs.preferredPetTypes!.contains('cat')) {
+            petTypeDisplay = 'Cat';
+          } else {
+            petTypeDisplay = prefs.preferredPetTypes!.first;
+          }
+        }
+
+        // Convertește garden din boolean în text
+        String gardenDisplay = 'Not set';
+        if (prefs.hasGarden == true) {
+          gardenDisplay = 'Yes';
+        } else if (prefs.hasGarden == false) {
+          gardenDisplay = 'No';
+        }
+
         setState(() {
           _savedPreferences = {
-            "petType": prefs.preferredPetTypes?.isNotEmpty == true
-                ? prefs.preferredPetTypes!.first
-                : 'Not set',
-            "gardenAccess": prefs.hasGarden == true ? 'Yes' : 'No',
+            "petType": petTypeDisplay,
+            "gardenAccess": gardenDisplay,
             "hasChildren": prefs.hasChildren ?? false,
             "childrenAgeRange": prefs.childrenAges?.join(', ') ?? '',
             "existingPets": prefs.otherPetTypes ?? <String>[],
@@ -137,9 +162,14 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
             "hasOtherPets": prefs.hasOtherPets ?? false,
           };
         });
+        print('Preferences UI state updated: $_savedPreferences');
+      } else {
+        print('No preferences found or widget not mounted');
       }
     } on ApiException catch (e) {
       print('API Error loading preferences: ${e.message}');
+    } catch (e) {
+      print('Error loading preferences: $e');
     }
   }
 
