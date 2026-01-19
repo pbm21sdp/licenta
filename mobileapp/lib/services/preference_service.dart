@@ -50,11 +50,12 @@ class PreferenceService {
     }
   }
 
-  /// Actualizează preferințele
+  /// Actualizează preferințele (sau le creează dacă nu există)
   Future<UserPreferences?> updatePreferences(
     Map<String, dynamic> updates,
   ) async {
     try {
+      // Încearcă PUT (update)
       final response = await _apiClient.put(
         ApiConfig.preferences,
         data: updates,
@@ -66,6 +67,24 @@ class PreferenceService {
       }
       return null;
     } on DioException catch (e) {
+      // Dacă primește 404 (nu există preferințe), încearcă POST (create)
+      if (e.response?.statusCode == 404) {
+        print('Preferences not found, creating new...');
+        return await savePreferences(UserPreferences(
+          preferredPetTypes: updates['preferredPetTypes'] != null
+              ? List<String>.from(updates['preferredPetTypes'])
+              : null,
+          hasGarden: updates['hasGarden'],
+          hasChildren: updates['hasChildren'],
+          childrenAges: updates['childrenAges'] != null
+              ? List<String>.from(updates['childrenAges'])
+              : null,
+          hasOtherPets: updates['hasOtherPets'],
+          otherPetTypes: updates['otherPetTypes'] != null
+              ? List<String>.from(updates['otherPetTypes'])
+              : null,
+        ));
+      }
       throw ApiException.fromDioError(e);
     }
   }
