@@ -27,8 +27,11 @@ class AdoptionService {
     String? additionalNotes,
   }) async {
     try {
-      // Get current user ID if authenticated
+      // Get current user ID - required for submission
       final userId = _authService.currentUser?.id;
+      if (userId == null) {
+        throw Exception('You must be logged in to submit an application');
+      }
 
       final response = await _client
           .from('adoption_applications')
@@ -146,17 +149,22 @@ class AdoptionService {
     }
   }
 
-  /// Check if application exists for a pet and email
+  /// Check if an active application exists for a pet and email
+  /// Active statuses: pending, under_review, interview, approved
+  /// Withdrawn/rejected applications do NOT block new submissions
   Future<bool> hasExistingApplication({
     required String petId,
     required String applicantEmail,
   }) async {
     try {
+      final activeStatuses = ['pending', 'under_review', 'interview', 'approved'];
+
       final response = await _client
           .from('adoption_applications')
           .select('id')
           .eq('pet_id', petId)
           .eq('applicant_email', applicantEmail)
+          .inFilter('application_status', activeStatuses)
           .maybeSingle();
 
       return response != null;

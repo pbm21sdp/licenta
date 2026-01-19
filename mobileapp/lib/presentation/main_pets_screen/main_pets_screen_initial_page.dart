@@ -191,6 +191,9 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
     setState(() {
       if (currentIndex != null) {
         _currentCardIndex = currentIndex;
+      } else {
+        // Last card was swiped - set index beyond array to trigger empty state
+        _currentCardIndex = _petData.length;
       }
     });
 
@@ -452,6 +455,47 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
     super.dispose();
   }
 
+  Widget _buildActionButton({
+    required ThemeData theme,
+    required double size,
+    required String iconName,
+    required Color iconColor,
+    required Color backgroundColor,
+    required Color shadowColor,
+    double iconSize = 32,
+    VoidCallback? onTap,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: backgroundColor,
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor,
+            offset: const Offset(0, 4),
+            blurRadius: 12,
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          customBorder: const CircleBorder(),
+          child: Center(
+            child: CustomIconWidget(
+              iconName: iconName,
+              color: iconColor,
+              size: iconSize,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -539,50 +583,52 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
                     ),
                   ),
                 )
-              : _petData.isEmpty || _currentCardIndex >= _petData.length
-              ? EmptyStateWidget(onRefresh: _refreshPets)
               : Stack(
                   children: [
-                    Padding(
-                      padding: EdgeInsets.only(
-                        left: 4.w,
-                        right: 4.w,
-                        top: 2.h,
-                        bottom: 15.h, // Space for buttons
-                      ),
-                      child: CardSwiper(
-                        controller: _cardController,
-                        cardsCount: _petData.length,
-                        onSwipe: _onSwipe,
-                        isLoop: false,
-                        numberOfCardsDisplayed: _petData.length < 3
-                            ? _petData.length
-                            : 3,
-                        backCardOffset: const Offset(0, 40),
-                        padding: EdgeInsets.zero,
-                        allowedSwipeDirection: const AllowedSwipeDirection.only(
-                          left: true,
-                          right: true,
+                    // Show either pet cards or empty state
+                    if (_petData.isEmpty || _currentCardIndex >= _petData.length)
+                      EmptyStateWidget(onRefresh: _refreshPets)
+                    else
+                      Padding(
+                        padding: EdgeInsets.only(
+                          left: 4.w,
+                          right: 4.w,
+                          top: 2.h,
+                          bottom: 15.h, // Space for buttons
                         ),
-                        cardBuilder:
-                            (
-                              context,
-                              index,
-                              horizontalThresholdPercentage,
-                              verticalThresholdPercentage,
-                            ) {
-                              return PetCardWidget(
-                                pet: _petData[index],
-                                onTap: () =>
-                                    _navigateToPetDetail(_petData[index]),
-                              );
-                            },
+                        child: CardSwiper(
+                          controller: _cardController,
+                          cardsCount: _petData.length,
+                          onSwipe: _onSwipe,
+                          isLoop: false,
+                          numberOfCardsDisplayed: _petData.length < 3
+                              ? _petData.length
+                              : 3,
+                          backCardOffset: const Offset(0, 40),
+                          padding: EdgeInsets.zero,
+                          allowedSwipeDirection: const AllowedSwipeDirection.only(
+                            left: true,
+                            right: true,
+                          ),
+                          cardBuilder:
+                              (
+                                context,
+                                index,
+                                horizontalThresholdPercentage,
+                                verticalThresholdPercentage,
+                              ) {
+                                return PetCardWidget(
+                                  pet: _petData[index],
+                                  onTap: () =>
+                                      _navigateToPetDetail(_petData[index]),
+                                );
+                              },
+                        ),
                       ),
-                    ),
 
-                    // Action buttons at bottom - only visible when cards are present
-                    if (_petData.isNotEmpty &&
-                        _currentCardIndex < _petData.length)
+                    // Action buttons - visible when cards present OR undo queue has items
+                    if ((_petData.isNotEmpty && _currentCardIndex < _petData.length) ||
+                        _undoQueue.isNotEmpty)
                       Positioned(
                         bottom: 4.h,
                         left: 0,
@@ -590,112 +636,56 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            // Skip button (X icon, round)
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: theme.colorScheme.surface,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.shadowColor.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    offset: const Offset(0, 4),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _handleSkipButton,
-                                  customBorder: const CircleBorder(),
-                                  child: Center(
-                                    child: CustomIconWidget(
-                                      iconName: 'close',
-                                      color: theme.colorScheme.error,
-                                      size: 32,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            // Skip button (X icon, round) - disabled when empty
+                            _buildActionButton(
+                              theme: theme,
+                              size: 60,
+                              iconName: 'close',
+                              iconColor: _currentCardIndex < _petData.length
+                                  ? theme.colorScheme.error
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                              backgroundColor: theme.colorScheme.surface,
+                              shadowColor: theme.shadowColor.withValues(alpha: 0.15),
+                              onTap: _currentCardIndex < _petData.length
+                                  ? _handleSkipButton
+                                  : null,
                             ),
 
                             SizedBox(width: 4.w),
 
-                            // Undo button (round)
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: theme.colorScheme.surface,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.shadowColor.withValues(
-                                      alpha: 0.15,
-                                    ),
-                                    offset: const Offset(0, 4),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _undoQueue.isNotEmpty
-                                      ? _handleUndo
-                                      : null,
-                                  customBorder: const CircleBorder(),
-                                  child: Center(
-                                    child: CustomIconWidget(
-                                      iconName: 'undo',
-                                      color: _undoQueue.isNotEmpty
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurface
-                                                .withValues(alpha: 0.3),
-                                      size: 24,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            // Undo button (round) - always enabled if queue not empty
+                            _buildActionButton(
+                              theme: theme,
+                              size: 50,
+                              iconName: 'undo',
+                              iconSize: 24,
+                              iconColor: _undoQueue.isNotEmpty
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                              backgroundColor: theme.colorScheme.surface,
+                              shadowColor: theme.shadowColor.withValues(alpha: 0.15),
+                              onTap: _undoQueue.isNotEmpty ? _handleUndo : null,
                             ),
 
                             SizedBox(width: 4.w),
 
-                            // Like button (heart icon, round)
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: theme.colorScheme.primary,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: theme.colorScheme.primary.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    offset: const Offset(0, 4),
-                                    blurRadius: 12,
-                                  ),
-                                ],
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: _handleLikeButton,
-                                  customBorder: const CircleBorder(),
-                                  child: Center(
-                                    child: CustomIconWidget(
-                                      iconName: 'favorite',
-                                      color: theme.colorScheme.onPrimary,
-                                      size: 32,
-                                    ),
-                                  ),
-                                ),
-                              ),
+                            // Like button (heart icon, round) - disabled when empty
+                            _buildActionButton(
+                              theme: theme,
+                              size: 60,
+                              iconName: 'favorite',
+                              iconColor: _currentCardIndex < _petData.length
+                                  ? theme.colorScheme.onPrimary
+                                  : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                              backgroundColor: _currentCardIndex < _petData.length
+                                  ? theme.colorScheme.primary
+                                  : theme.colorScheme.surface,
+                              shadowColor: _currentCardIndex < _petData.length
+                                  ? theme.colorScheme.primary.withValues(alpha: 0.3)
+                                  : theme.shadowColor.withValues(alpha: 0.15),
+                              onTap: _currentCardIndex < _petData.length
+                                  ? _handleLikeButton
+                                  : null,
                             ),
                           ],
                         ),
