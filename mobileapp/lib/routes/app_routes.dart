@@ -13,9 +13,13 @@ import '../presentation/settings/notification_preferences_screen.dart';
 import '../presentation/settings/account_security_screen.dart';
 import '../presentation/settings/privacy_controls_screen.dart';
 import '../presentation/settings/help_support_screen.dart';
+// Shelter screens
+import '../presentation/shelter/shelter_dashboard_screen.dart';
+import '../presentation/shelter/application_detail_screen.dart';
+import '../presentation/shelter/shelter_pet_editor_screen.dart';
 
 class AppRoutes {
-  // TODO: Add routes here
+  // Adopter routes
   static const String initial = '/';
   static const String login = '/login-screen';
   static const String favorites = '/favorites-screen';
@@ -31,6 +35,11 @@ class AppRoutes {
   static const String accountSecurity = '/account-security';
   static const String privacyControls = '/privacy-controls';
   static const String helpSupport = '/help-support';
+
+  // Shelter staff routes
+  static const String shelterDashboard = '/shelter-dashboard';
+  static const String shelterApplicationDetail = '/shelter-application-detail';
+  static const String shelterPetEditor = '/shelter-pet-editor';
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const WelcomeScreen(),
@@ -51,5 +60,20 @@ class AppRoutes {
     accountSecurity: (context) => const AccountSecurityScreen(),
     privacyControls: (context) => const PrivacyControlsScreen(),
     helpSupport: (context) => const HelpSupportScreen(),
+    // Shelter staff routes
+    shelterDashboard: (context) => const ShelterDashboardScreen(),
+    shelterApplicationDetail: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ApplicationDetailScreen(
+        applicationId: args?['applicationId'] as String? ?? '',
+      );
+    },
+    shelterPetEditor: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ShelterPetEditorScreen(
+        petId: args?['petId'] as String?,
+        shelterId: args?['shelterId'] as String?,
+      );
+    },
   };
 }
