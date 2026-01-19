@@ -75,18 +75,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!mounted) return;
 
+      // Check user role to determine navigation
+      final userRole = await _authService.getUserRole();
+      final isShelterStaff = userRole == 'shelter_staff';
+
       // Check email verification status
       final isVerified = await _authService.isEmailVerified();
 
       if (!isVerified) {
         // Show verification warning dialog
-        _showVerificationWarningDialog();
+        _showVerificationWarningDialog(isShelterStaff: isShelterStaff);
       } else {
-        // Navigate to main pets screen
-        Navigator.of(
-          context,
-          rootNavigator: true,
-        ).pushReplacementNamed('/main-pets-screen');
+        // Navigate based on role
+        _navigateToHome(isShelterStaff: isShelterStaff);
       }
     } catch (e) {
       if (!mounted) return;
@@ -113,7 +114,16 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showVerificationWarningDialog() {
+  void _navigateToHome({required bool isShelterStaff}) {
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).pushReplacementNamed(
+      isShelterStaff ? '/shelter-dashboard' : '/main-pets-screen',
+    );
+  }
+
+  void _showVerificationWarningDialog({bool isShelterStaff = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -138,8 +148,10 @@ class _LoginScreenState extends State<LoginScreen> {
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             SizedBox(height: 2.h),
-            const Text(
-              'You can browse pets, but adoption actions are restricted until you verify your email.',
+            Text(
+              isShelterStaff
+                  ? 'You can access the shelter dashboard, but some actions may be restricted until you verify your email.'
+                  : 'You can browse pets, but adoption actions are restricted until you verify your email.',
             ),
             SizedBox(height: 1.h),
             Text(
@@ -180,10 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              Navigator.of(
-                context,
-                rootNavigator: true,
-              ).pushReplacementNamed('/main-pets-screen');
+              _navigateToHome(isShelterStaff: isShelterStaff);
             },
             child: const Text('Continue Anyway'),
           ),
@@ -302,20 +311,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       // App logo
                       Center(
-                        child: Container(
-                          width: 20.w,
-                          height: 20.w,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary,
-                            borderRadius: BorderRadius.circular(4.w),
-                          ),
-                          child: Center(
-                            child: CustomIconWidget(
-                              iconName: 'pets',
-                              color: theme.colorScheme.onPrimary,
-                              size: 10.w,
-                            ),
-                          ),
+                        child: CircleAvatar(
+                          radius: 10.w,
+                          backgroundColor: Colors.transparent,
+                          backgroundImage:
+                              const AssetImage('assets/images/logo.png'),
                         ),
                       ),
 
@@ -375,7 +375,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             SizedBox(height: 1.h),
                             Text(
-                              'Verified User:',
+                              'Adopter (Verified):',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
@@ -388,13 +388,13 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             SizedBox(height: 0.5.h),
                             Text(
-                              'Unverified User:',
+                              'Shelter Staff:',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
-                              'unverified@petadoption.com / UnverifiedUser123',
+                              'shelter@petadoption.com / ShelterStaff123',
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),

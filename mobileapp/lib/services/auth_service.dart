@@ -205,4 +205,64 @@ class AuthService {
       throw Exception('Profile update failed: $e');
     }
   }
+
+  /// Get user role from database
+  /// Returns 'adopter' or 'shelter_staff'
+  Future<String> getUserRole() async {
+    try {
+      if (currentUser == null) return 'adopter';
+
+      final profile = await _client
+          .from('user_profiles')
+          .select('role')
+          .eq('id', currentUser!.id)
+          .maybeSingle();
+
+      return profile?['role'] as String? ?? 'adopter';
+    } catch (e) {
+      return 'adopter';
+    }
+  }
+
+  /// Check if current user is shelter staff
+  Future<bool> isShelterStaff() async {
+    final role = await getUserRole();
+    return role == 'shelter_staff';
+  }
+
+  /// Get shelter ID for staff user
+  /// Returns null if user is not staff or has no shelter assignment
+  Future<String?> getStaffShelterId() async {
+    try {
+      if (currentUser == null) return null;
+
+      final staffRecord = await _client
+          .from('shelter_staff')
+          .select('shelter_id')
+          .eq('user_id', currentUser!.id)
+          .maybeSingle();
+
+      return staffRecord?['shelter_id'] as String?;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get shelter profile for staff user
+  Future<Map<String, dynamic>?> getStaffShelterProfile() async {
+    try {
+      final shelterId = await getStaffShelterId();
+      if (shelterId == null) return null;
+
+      final shelter = await _client
+          .from('shelter_profiles')
+          .select()
+          .eq('id', shelterId)
+          .maybeSingle();
+
+      return shelter;
+    } catch (e) {
+      return null;
+    }
+  }
 }
