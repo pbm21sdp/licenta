@@ -114,17 +114,6 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           onPressed: () => Navigator.of(context).pop(),
           icon: const CustomIconWidget(iconName: 'arrow_back', size: 24),
         ),
-        actions: [
-          if (_application != null)
-            TextButton.icon(
-              onPressed: _showStatusUpdateModal,
-              icon: const CustomIconWidget(
-                iconName: 'edit',
-                size: 18,
-              ),
-              label: const Text('Update Status'),
-            ),
-        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -169,12 +158,12 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           children: [
             // Status header
             Container(
-              padding: EdgeInsets.all(4.w),
+              padding: EdgeInsets.all(2.w),
               decoration: BoxDecoration(
                 color: statusColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(30),
                 border: Border.all(
-                  color: statusColor.withValues(alpha: 0.3),
+                  color: statusColor.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -212,15 +201,47 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    onPressed: _showStatusUpdateModal,
-                    icon: CustomIconWidget(
-                      iconName: 'edit',
-                      size: 20,
-                      color: statusColor,
+                  InkWell(
+                    onTap: _showStatusUpdateModal,
+                    borderRadius: BorderRadius.circular(30),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 2.w,
+                        vertical: 1.w,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Update',
+                            style: theme.textTheme.labelLarge?.copyWith(
+                              color: statusColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 2.w),
+                          Container(
+                            padding: EdgeInsets.all(1.5.w),
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            child: CustomIconWidget(
+                              iconName: 'edit',
+                              size: 20,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    tooltip: 'Update status',
-                  ),
+                  )
                 ],
               ),
             ),
