@@ -577,4 +577,43 @@ class ShelterService {
       return [];
     }
   }
+
+  // =====================================================
+  // User Management (Cooldown Reset)
+  // =====================================================
+
+  /// Get all users with adopter role for cooldown management
+  /// Uses RPC function to bypass RLS restrictions
+  Future<List<Map<String, dynamic>>> getAdopters({String? searchQuery}) async {
+    try {
+      final response = await _client.rpc('get_adopters');
+      var adopters = List<Map<String, dynamic>>.from(response as List);
+
+      // Filter by search query if provided (client-side filtering)
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        final lowerQuery = searchQuery.toLowerCase();
+        adopters = adopters.where((adopter) {
+          final name = (adopter['full_name'] as String?)?.toLowerCase() ?? '';
+          final email = (adopter['email'] as String?)?.toLowerCase() ?? '';
+          return name.contains(lowerQuery) || email.contains(lowerQuery);
+        }).toList();
+      }
+
+      return adopters;
+    } catch (e) {
+      throw Exception('Failed to fetch adopters: $e');
+    }
+  }
+
+  /// Reset cooldowns for a user by calling the RPC function
+  /// This deletes all 'skip' interactions for the specified user
+  Future<void> resetUserCooldowns(String userId) async {
+    try {
+      await _client.rpc('reset_user_cooldowns', params: {
+        'target_user_id': userId,
+      });
+    } catch (e) {
+      throw Exception('Failed to reset cooldowns: $e');
+    }
+  }
 }

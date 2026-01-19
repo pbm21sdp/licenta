@@ -8,6 +8,7 @@ import 'shelter_applications_screen.dart';
 import 'shelter_pets_screen.dart';
 import 'shelter_settings_screen.dart';
 import 'widgets/dashboard_stats_widget.dart';
+import 'widgets/reset_cooldown_modal_widget.dart';
 
 /// Main dashboard screen for shelter staff
 /// Provides navigation shell with bottom bar and overview statistics
@@ -72,6 +73,22 @@ class _ShelterDashboardScreenState extends State<ShelterDashboardScreen> {
 
   void _onTabTapped(int index) {
     setState(() => _currentIndex = index);
+  }
+
+  void _showResetCooldownModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => ResetCooldownModalWidget(
+        onSuccess: () {
+          // Optional: refresh dashboard data after reset
+        },
+      ),
+    );
   }
 
   Widget _buildDashboardHome() {
@@ -157,36 +174,40 @@ class _ShelterDashboardScreenState extends State<ShelterDashboardScreen> {
             ),
             SizedBox(height: 2.w),
 
-            IntrinsicHeight(
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 44.w,
-                    child: _buildQuickActionCard(
-                      theme,
-                      'Add New Pet \nto Shelter',
-                      'pets',
-                      theme.colorScheme.primary,
-                          () {
-                        Navigator.of(context).pushNamed('/shelter-pet-editor');
-                      },
-                    ),
-                  ),
-                  SizedBox(width: 2.w),
-                  SizedBox(
-                    width: 44.w,
-                    child: _buildQuickActionCard(
-                      theme,
-                      'View All Applications',
-                      'assignment',
-                      theme.colorScheme.secondary,
-                          () {
-                        setState(() => _currentIndex = 1);
-                      },
-                    ),
-                  ),
-                ],
-              ),
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 1, // Reduced spacing
+              crossAxisSpacing: 1, // Reduced spacing
+              childAspectRatio: 1.0, // This makes the cells square
+              children: [
+                _buildQuickActionCard(
+                  theme,
+                  'Add New\nPet',
+                  'pets',
+                  theme.colorScheme.primary,
+                  () {
+                    Navigator.of(context).pushNamed('/shelter-pet-editor');
+                  },
+                ),
+                _buildQuickActionCard(
+                  theme,
+                  'View\nApplications',
+                  'assignment',
+                  theme.colorScheme.secondary,
+                  () {
+                    setState(() => _currentIndex = 1);
+                  },
+                ),
+                _buildQuickActionCard(
+                  theme,
+                  'Reset\nCooldowns',
+                  'history',
+                  Colors.orange,
+                  _showResetCooldownModal,
+                ),
+              ],
             ),
           ],
         ),
@@ -266,8 +287,9 @@ class _ShelterDashboardScreenState extends State<ShelterDashboardScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: EdgeInsets.all(4.w),
+          padding: EdgeInsets.all(2.w), // Reduced padding
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
                 padding: EdgeInsets.all(3.w),
@@ -281,11 +303,15 @@ class _ShelterDashboardScreenState extends State<ShelterDashboardScreen> {
                   color: color,
                 ),
               ),
-              SizedBox(height: 1.5.h),
-              Text(
-                title,
-                style: theme.textTheme.labelMedium,
-                textAlign: TextAlign.center,
+              SizedBox(height: 1.h), // Reduced height
+              Expanded(
+                child: Center(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.labelMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ),
             ],
           ),
