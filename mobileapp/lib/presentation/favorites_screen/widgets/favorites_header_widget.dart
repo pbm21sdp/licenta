@@ -49,54 +49,53 @@ class FavoritesHeaderWidget extends StatelessWidget {
             // Search and sort row
             Row(
               children: [
-                // Search bar
                 Expanded(
-                  child: Container(
-                    height: 6.h,
-                    decoration: BoxDecoration(
+                  child: SizedBox(
+                    height: 5.h,
+                    child: Material(
                       color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: theme.colorScheme.outline,
-                        width: 1,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search by name or breed',
-                        hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant.withValues(
-                            alpha: 0.6,
-                          ),
-                        ),
-                        prefixIcon: Padding(
-                          padding: EdgeInsets.all(2.w),
-                          child: CustomIconWidget(
-                            iconName: 'search',
-                            color: theme.colorScheme.onSurfaceVariant,
-                            size: 20,
-                          ),
-                        ),
-                        suffixIcon: searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: CustomIconWidget(
-                                  iconName: 'clear',
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  size: 20,
-                                ),
-                                onPressed: () {
-                                  searchController.clear();
-                                },
-                              )
-                            : null,
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 3.w,
-                          vertical: 1.5.h,
+                      shape: StadiumBorder(
+                        side: BorderSide(
+                          color: theme.colorScheme.outline,
+                          width: 1.0,
                         ),
                       ),
-                      style: theme.textTheme.bodyMedium,
+                      child: TextField(
+                        controller: searchController,
+                        textAlignVertical: TextAlignVertical.center,
+                        decoration: InputDecoration(
+                          hintText: 'Search by name or breed',
+                          hintStyle: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                          ),
+                          isDense: true,
+                          prefixIcon: Padding(
+                            padding: EdgeInsets.only(left: 4.w, right: 2.w),
+                            child: CustomIconWidget(
+                              iconName: 'search',
+                              color: theme.colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                          ),
+                          suffixIcon: searchController.text.isNotEmpty
+                              ? IconButton(
+                            icon: CustomIconWidget(
+                              iconName: 'clear',
+                              color: theme.colorScheme.onSurfaceVariant,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              searchController.clear();
+                            },
+                          )
+                              : null,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     ),
                   ),
                 ),
