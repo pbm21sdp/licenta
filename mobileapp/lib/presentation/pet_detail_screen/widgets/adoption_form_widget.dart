@@ -92,7 +92,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result.message),
-              backgroundColor: Color(0xFF4ECDC4),
+              backgroundColor: Color(0xFF22C55E),
               duration: Duration(seconds: 3),
             ),
           );
@@ -335,7 +335,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      value: _housingType,
+                      initialValue: _housingType,
                       decoration: InputDecoration(
                         labelText: 'Housing Type',
                         border: OutlineInputBorder(
@@ -359,7 +359,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      value: _hasGarden,
+                      initialValue: _hasGarden,
                       decoration: InputDecoration(
                         labelText: 'Do you have a garden/yard?',
                         border: OutlineInputBorder(
@@ -390,7 +390,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      value: _hasChildren,
+                      initialValue: _hasChildren,
                       decoration: InputDecoration(
                         labelText: 'Do you have children at home?',
                         border: OutlineInputBorder(
@@ -414,7 +414,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      value: _hasPets,
+                      initialValue: _hasPets,
                       decoration: InputDecoration(
                         labelText: 'Do you currently have pets?',
                         border: OutlineInputBorder(
@@ -445,7 +445,7 @@ class _AdoptionFormWidgetState extends State<AdoptionFormWidget> {
                     ),
                     SizedBox(height: 2.h),
                     DropdownButtonFormField<String>(
-                      value: _experience,
+                      initialValue: _experience,
                       decoration: InputDecoration(
                         labelText: 'Pet Ownership Experience',
                         border: OutlineInputBorder(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
-
 /// Minimalist Welcome Screen
 /// Clean design with pet illustration and teal accent buttons
 
@@ -26,7 +25,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               const Spacer(flex: 2),
 
               // Pet illustration with decorative dots
-              _buildIllustration(),
+              RepaintBoundary(
+                child: _buildIllustration(context),
+              ),
 
               SizedBox(height: 1.h),
 
@@ -35,7 +36,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 'Paws',
                 style: TextStyle(
                   fontFamily: 'Cinthya',
-                  fontSize: 80.sp,
+                  fontSize: 60.sp,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
                   letterSpacing: 0.5,
@@ -46,7 +47,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
               // Subtitle
               Text(
-                'Find with your\nperfect pet companion',
+                'Match with your\nperfect pet companion',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 15.sp,
@@ -63,8 +64,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 theme: theme,
                 label: 'Get Started',
                 onPressed: () {
-                  Navigator.of(context, rootNavigator: true)
-                      .pushNamed('/register-screen');
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).pushNamed('/register-screen');
                 },
               ),
 
@@ -75,8 +78,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 theme: theme,
                 label: 'Login',
                 onPressed: () {
-                  Navigator.of(context, rootNavigator: true)
-                      .pushNamed('/login-screen');
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).pushNamed('/login-screen');
                 },
               ),
 
@@ -89,30 +94,36 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   /// Builds the pet illustration section with decorative elements
-  Widget _buildIllustration() {
+  Widget _buildIllustration(BuildContext context) {
+    final dpr = MediaQuery.of(context).devicePixelRatio;
+
+    // limitează dimensiunea ca să nu explodeze pe ecrane mari
+    final double circleSize = (70.w).clamp(220.0, 320.0);
+    final double imageSize = (60.w).clamp(200.0, 280.0);
+
     return SizedBox(
-      height: 45.h,
+      height: (45.h).clamp(260.0, 360.0),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Decorative dots in background
           _buildDecorativeDots(),
 
-          // Main pet illustration container
           Container(
-            width: 120.w,
-            height: 120.w,
+            width: circleSize,
+            height: circleSize,
             decoration: BoxDecoration(
-              color: const Color(0xFFB2DFDB).withOpacity(0.15),
+              color: const Color(0xFFE8B8C8).withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Center(
-              child: Image.asset(
-                'assets/images/icon__1_.png', // Your pet artwork
-                width: 95.w,
-                height: 95.w,
-                fit: BoxFit.contain,
-              ),
+            alignment: Alignment.center,
+            child: Image.asset(
+              'assets/images/icon__1_.png',
+              width: imageSize,
+              height: imageSize,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.low,
+              // SUPER important: decode la dimensiune apropiată de ce afișezi
+              cacheWidth: (imageSize * dpr).round(),
             ),
           ),
         ],
@@ -127,35 +138,47 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       height: 50.h,
       child: Stack(
         children: [
-          // Top right dot
+          // Top right dot - Rose shades
           Positioned(
             top: 5.0.h,
             right: 2.w,
-            child: _buildDot(size: 25.w, color: const Color(0xFF006666)),
+            child: _buildDot(
+              size: 14.w,
+              color: const Color(0xFFD4A0B0),
+            ), // Deep rose
           ),
           // Top right dot 2
           Positioned(
             top: 25.h,
             right: 15.w,
-            child: _buildDot(size: 10.w, color: const Color(0xFF008080)),
+            child: _buildDot(size: 6.w, color: const Color(0xFFE8B8C8)), // Rose
           ),
           // Bottom right dot
           Positioned(
             bottom: 8.h,
             right: 6.w,
-            child: _buildDot(size: 6.5.w, color: const Color(0xFF004c4c)),
+            child: _buildDot(
+              size: 4.5.w,
+              color: const Color(0xFF8A8587),
+            ), // Grey taupe
           ),
           // Bottom left dot
           Positioned(
             bottom: 12.h,
             left: 4.w,
-            child: _buildDot(size: 6.w, color: const Color(0xFFb2d8d8)),
+            child: _buildDot(
+              size: 4.w,
+              color: const Color(0xFFF0D0DC),
+            ), // Light rose
           ),
           // Top left dot
           Positioned(
             top: 18.h,
             left: 10.w,
-            child: _buildDot(size: 12.w, color: const Color(0xFF66b2b2)),
+            child: _buildDot(
+              size: 8.w,
+              color: const Color(0xFFB0ADAF),
+            ), // Light taupe
           ),
         ],
       ),
@@ -167,14 +190,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return Container(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 
-  /// Builds a teal-themed button
+  /// Builds a primary-themed button
   Widget _buildTealButton({
     required ThemeData theme,
     required String label,
@@ -187,7 +207,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: theme.colorScheme.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: theme.colorScheme.onPrimary,
           elevation: 0,
           shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
@@ -197,7 +217,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         child: Text(
           label,
           style: theme.textTheme.titleMedium?.copyWith(
-            color: Colors.white,
+            color: theme.colorScheme.onPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -205,7 +225,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     );
   }
 
-  /// Builds a teal-themed outlined button
+  /// Builds a primary-themed outlined button
   Widget _buildOutlinedButton({
     required ThemeData theme,
     required String label,
@@ -218,8 +238,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         onPressed: onPressed,
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.white,
-          foregroundColor: theme.colorScheme.tertiary,
-          side: BorderSide(color: theme.colorScheme.tertiary, width: 2),
+          foregroundColor: theme.colorScheme.primary,
+          side: BorderSide(color: theme.colorScheme.primary, width: 2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -227,7 +247,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         child: Text(
           label,
           style: theme.textTheme.titleMedium?.copyWith(
-            color: theme.colorScheme.tertiary,
+            color: theme.colorScheme.primary,
             fontWeight: FontWeight.w600,
           ),
         ),

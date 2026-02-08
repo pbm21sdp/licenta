@@ -12,10 +12,8 @@ class CustomIconWidget extends StatelessWidget {
     this.color,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    // Map of available icons
-    final Map<String, IconData> iconMap = {
+  // Map of available icons - static to avoid recreating on every build
+  static final Map<String, IconData> _iconMap = {
       // A
       'abc': Icons.abc,
       'abc_outlined': Icons.abc_outlined,
@@ -9011,10 +9009,11 @@ class CustomIconWidget extends StatelessWidget {
       'zoom_out_sharp': Icons.zoom_out_sharp,
     };
 
-    // Check if the icon exists
-    if (iconMap.containsKey(iconName)) {
+  @override
+  Widget build(BuildContext context) {
+    if (_iconMap.containsKey(iconName)) {
       return Icon(
-        iconMap[iconName],
+        _iconMap[iconName],
         size: size,
         color: color,
         semanticLabel: iconName,

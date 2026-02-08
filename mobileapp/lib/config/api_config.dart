@@ -51,7 +51,7 @@ class ApiConfig {
   // Endpoints pentru preferințe utilizator
   static const String preferences = '/preferences';
 
-  // Endpoints pentru admin
+  // Endpoints pentru admin (deprecated)
   static const String adminDashboard = '/admin/dashboard';
   static const String adminPets = '/admin/pets';
   static const String adminAdoptions = '/admin/adoptions';
@@ -59,4 +59,27 @@ class ApiConfig {
   static String adminAdoptionById(int id) => '/admin/adoptions/$id';
   static String adminAdoptionStatus(int id) => '/admin/adoptions/$id/status';
   static String adminScheduleMeeting(int id) => '/admin/adoptions/$id/meeting';
+
+  // ==========================================
+  // PEER-TO-PEER ENDPOINTS (NEW)
+  // ==========================================
+
+  // My Pets - gestionarea animalelor proprii
+  static const String myPets = '/my-pets';
+  static String myPetById(int id) => '/my-pets/$id';
+  static String myPetPhotos(int id) => '/my-pets/$id/photos';
+  static String myPetPhotoById(int petId, int photoId) => '/my-pets/$petId/photos/$photoId';
+
+  // Owner Adoptions - gestionarea cererilor primite
+  static const String ownerAdoptions = '/owner/adoptions';
+  static const String ownerAdoptionsStats = '/owner/adoptions/stats';
+  static String ownerAdoptionById(int id) => '/owner/adoptions/$id';
+  static String ownerAdoptionStatus(int id) => '/owner/adoptions/$id/status';
+  static String ownerAdoptionMeeting(int id) => '/owner/adoptions/$id/meeting';
+
+  // User Profiles - profile publice
+  static const String usersSearch = '/users/search';
+  static const String usersTopListers = '/users/top-listers';
+  static String userProfile(int id) => '/users/$id/profile';
+  static String userPets(int id) => '/users/$id/pets';
 }

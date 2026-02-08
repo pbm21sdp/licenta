@@ -20,6 +20,11 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
   bool _isFavorite = false;
   bool _isLoading = false;
 
+  // Owner info for peer-to-peer model
+  bool get _isCurrentUserOwner => _petData?['isCurrentUserOwner'] ?? false;
+  int? get _ownerId => _petData?['ownerId'];
+  String? get _ownerName => _petData?['ownerName'];
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -75,6 +80,123 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
         ),
       );
     }
+  }
+
+  void _navigateToEditPet() {
+    // Import PetModel and create from _petData
+    Navigator.pushNamed(
+      context,
+      '/edit-pet',
+      arguments: _petData,
+    ).then((result) {
+      if (result == true) {
+        // Pet was updated, refresh or go back
+        Navigator.pop(context, true);
+      } else if (result == 'deleted') {
+        Navigator.pop(context, 'deleted');
+      }
+    });
+  }
+
+  void _navigateToOwnerProfile() {
+    if (_ownerId != null) {
+      Navigator.pushNamed(
+        context,
+        '/public-profile',
+        arguments: _ownerId,
+      );
+    }
+  }
+
+  Widget _buildOwnerSection(ThemeData theme) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4.w),
+      child: InkWell(
+        onTap: _navigateToOwnerProfile,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: EdgeInsets.all(4.w),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
+                child: Icon(
+                  Icons.person,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              SizedBox(width: 3.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Listed by',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    Text(
+                      _ownerName ?? 'Unknown',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.outline,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerActions(ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _navigateToEditPet,
+            icon: Icon(Icons.edit),
+            label: Text('Edit'),
+            style: OutlinedButton.styleFrom(
+              padding: EdgeInsets.symmetric(vertical: 1.5.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 3.w),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, '/adoption-requests');
+            },
+            icon: Icon(Icons.inbox),
+            label: Text('Requests'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
+              padding: EdgeInsets.symmetric(vertical: 1.5.h),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -136,6 +258,10 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
                         HealthStatusWidget(
                           healthStatus: _petData!['healthStatus'] as String,
                         ),
+                        SizedBox(height: 3.h),
+                        // Owner info section
+                        if (_ownerName != null && !_isCurrentUserOwner)
+                          _buildOwnerSection(theme),
                         SizedBox(height: 12.h),
                       ],
                     ),
@@ -212,25 +338,27 @@ class _PetDetailScreenState extends State<PetDetailScreen> {
                 ],
               ),
               child: SafeArea(
-                child: ElevatedButton(
-                  onPressed: _showAdoptionForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: theme.colorScheme.onPrimary,
-                    padding: EdgeInsets.symmetric(vertical: 1.8.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    'Apply to Adopt',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                child: _isCurrentUserOwner
+                    ? _buildOwnerActions(theme)
+                    : ElevatedButton(
+                        onPressed: _showAdoptionForm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: theme.colorScheme.onPrimary,
+                          padding: EdgeInsets.symmetric(vertical: 1.8.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          'Apply to Adopt',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.onPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
               ),
             ),
           ),

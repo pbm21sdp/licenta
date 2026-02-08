@@ -1,59 +1,64 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
+/// Helper function to create TextStyle with SF Pro-like font (system default on iOS/Android)
+TextStyle _textStyle({
+  double fontSize = 14,
+  FontWeight fontWeight = FontWeight.w400,
+  Color? color,
+  double letterSpacing = 0,
+  double? height,
+}) {
+  return TextStyle(
+    fontFamily: '.SF Pro Text', // iOS system font, falls back to Roboto on Android
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    letterSpacing: letterSpacing,
+    height: height,
+  );
+}
 
 /// A class that contains all theme configurations for the pet adoption application.
-/// Implements Contemporary Warmth Minimalism with Compassionate Teal Foundation.
+/// Implements Minimalist Sage design with iOS-inspired aesthetics.
 class AppTheme {
   AppTheme._();
 
-  // Color Specifications - Compassionate Teal Foundation
-  static const Color primaryLight = Color(0xFF2D8B8B); // Trustworthy teal
-  static const Color primaryVariantLight = Color(
-    0xFF236B6B,
-  ); // Darker teal variant
-  static const Color secondaryLight = Color(0xFFF7F9FA); // Clean background
-  static const Color accentLight = Color(
-    0xFFFF6B6B,
-  ); // Warm coral for favorites
-  static const Color successLight = Color(
-    0xFF4ECDC4,
-  ); // Lighter teal for confirmations
-  static const Color warningLight = Color(
-    0xFFFFE66D,
-  ); // Gentle yellow for notices
-  static const Color errorLight = Color(0xFFFF8E8E); // Soft red for validation
-  static const Color backgroundLight = Color(0xFFF7F9FA);
+  // Color Specifications - Soft Rose & Taupe Palette
+  static const Color primaryLight = Color(0xFFE8B8C8); // Soft rose pink
+  static const Color primaryVariantLight = Color(0xFFD4A0B0); // Deeper rose
+  static const Color secondaryLight = Color(0xFF8A8587); // Grey taupe
+  static const Color accentLight = Color(0xFFFF6B6B); // Warm coral for favorites
+  static const Color successLight = Color(0xFF22C55E); // Green for confirmations
+  static const Color warningLight = Color(0xFFFBBF24); // Amber for notices
+  static const Color errorLight = Color(0xFFEF4444); // Red for validation
+  static const Color backgroundLight = Color(0xFFF2F2F7); // iOS style background
   static const Color surfaceLight = Color(0xFFFFFFFF); // Pure white for cards
-  static const Color textPrimaryLight = Color(0xFF2C3E50); // High contrast dark
-  static const Color textSecondaryLight = Color(0xFF7F8C8D); // Subtle gray
-  static const Color borderLight = Color(0xFFE8ECEF); // Minimal border color
-  static const Color onPrimaryLight = Color(0xFFFFFFFF);
-  static const Color onSecondaryLight = Color(0xFF2C3E50);
-  static const Color onBackgroundLight = Color(0xFF2C3E50);
-  static const Color onSurfaceLight = Color(0xFF2C3E50);
+  static const Color textPrimaryLight = Color(0xFF000000); // Black for high contrast
+  static const Color textSecondaryLight = Color(0xFF3C3C43); // iOS secondary label - darker gray
+  static const Color borderLight = Color(0xFFE5E5EA); // iOS style border
+  static const Color onPrimaryLight = Color(0xFF3C2A33); // Dark contrast on light pink
+  static const Color onSecondaryLight = Color(0xFFFFFFFF); // White on grey taupe
+  static const Color onBackgroundLight = Color(0xFF000000);
+  static const Color onSurfaceLight = Color(0xFF000000);
   static const Color onErrorLight = Color(0xFFFFFFFF);
 
-  // Dark theme colors - adapted for dark mode
-  static const Color primaryDark = Color(
-    0xFF4ECDC4,
-  ); // Lighter teal for dark mode
-  static const Color primaryVariantDark = Color(0xFF2D8B8B);
-  static const Color secondaryDark = Color(0xFF1A1F24); // Dark background
-  static const Color accentDark = Color(
-    0xFFFF8E8E,
-  ); // Adjusted coral for dark mode
-  static const Color successDark = Color(0xFF4ECDC4);
-  static const Color warningDark = Color(0xFFFFE66D);
-  static const Color errorDark = Color(0xFFFF8E8E);
-  static const Color backgroundDark = Color(0xFF121517);
-  static const Color surfaceDark = Color(0xFF1A1F24);
-  static const Color textPrimaryDark = Color(0xFFE8ECEF);
-  static const Color textSecondaryDark = Color(0xFF9BA3A8);
-  static const Color borderDark = Color(0xFF2C3439);
+  // Dark theme colors - Soft Rose & Taupe (Dark Mode)
+  static const Color primaryDark = Color(0xFFF0D0DC); // Lighter rose for dark mode
+  static const Color primaryVariantDark = Color(0xFFE8B8C8);
+  static const Color secondaryDark = Color(0xFFB0ADAF); // Lighter grey taupe
+  static const Color accentDark = Color(0xFFFF8E8E); // Adjusted coral for dark mode
+  static const Color successDark = Color(0xFF4ADE80);
+  static const Color warningDark = Color(0xFFFBBF24);
+  static const Color errorDark = Color(0xFFF87171);
+  static const Color backgroundDark = Color(0xFF000000); // True black
+  static const Color surfaceDark = Color(0xFF1C1C1E); // iOS dark surface
+  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textSecondaryDark = Color(0xFF8E8E93);
+  static const Color borderDark = Color(0xFF38383A); // iOS dark border
   static const Color onPrimaryDark = Color(0xFF000000);
-  static const Color onSecondaryDark = Color(0xFFE8ECEF);
-  static const Color onBackgroundDark = Color(0xFFE8ECEF);
-  static const Color onSurfaceDark = Color(0xFFE8ECEF);
+  static const Color onSecondaryDark = Color(0xFF000000);
+  static const Color onBackgroundDark = Color(0xFFFFFFFF);
+  static const Color onSurfaceDark = Color(0xFFFFFFFF);
   static const Color onErrorDark = Color(0xFF000000);
 
   // Shadow colors - Minimal Elevation Strategy (2-4dp with 0.08-0.12 opacity)
@@ -64,26 +69,14 @@ class AppTheme {
   static final Color dividerLight = primaryLight.withValues(alpha: 0.15);
   static final Color dividerDark = primaryDark.withValues(alpha: 0.15);
 
-  // Text emphasis colors
-  static final Color textHighEmphasisLight = textPrimaryLight.withValues(
-    alpha: 0.87,
-  );
-  static final Color textMediumEmphasisLight = textSecondaryLight.withValues(
-    alpha: 0.87,
-  );
-  static final Color textDisabledLight = textSecondaryLight.withValues(
-    alpha: 0.38,
-  );
+  // Text emphasis colors - full opacity for better visibility
+  static final Color textHighEmphasisLight = textPrimaryLight; // Pure black
+  static final Color textMediumEmphasisLight = Color(0xFF3C3C43); // iOS secondary label
+  static final Color textDisabledLight = Color(0xFFC7C7CC); // iOS disabled
 
-  static final Color textHighEmphasisDark = textPrimaryDark.withValues(
-    alpha: 0.87,
-  );
-  static final Color textMediumEmphasisDark = textSecondaryDark.withValues(
-    alpha: 0.87,
-  );
-  static final Color textDisabledDark = textSecondaryDark.withValues(
-    alpha: 0.38,
-  );
+  static final Color textHighEmphasisDark = textPrimaryDark; // Pure white
+  static final Color textMediumEmphasisDark = Color(0xFFEBEBF5); // iOS dark secondary
+  static final Color textDisabledDark = Color(0xFF48484A); // iOS dark disabled
 
   /// Light theme - Contemporary Warmth Minimalism
   static ThemeData lightTheme = ThemeData(
@@ -126,7 +119,7 @@ class AppTheme {
       elevation: 0,
       shadowColor: shadowLight,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: _textStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: textPrimaryLight,
@@ -149,11 +142,11 @@ class AppTheme {
       backgroundColor: surfaceLight,
       selectedItemColor: primaryLight,
       unselectedItemColor: textSecondaryLight,
-      selectedLabelStyle: GoogleFonts.roboto(
+      selectedLabelStyle: _textStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      unselectedLabelStyle: GoogleFonts.roboto(
+      unselectedLabelStyle: _textStyle(
         fontSize: 12,
         fontWeight: FontWeight.w400,
       ),
@@ -182,7 +175,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: _textStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
@@ -199,7 +192,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: _textStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
@@ -213,7 +206,7 @@ class AppTheme {
         foregroundColor: primaryLight,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-        textStyle: GoogleFonts.inter(
+        textStyle: _textStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
@@ -249,17 +242,17 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12.0),
         borderSide: BorderSide(color: errorLight, width: 2.0),
       ),
-      labelStyle: GoogleFonts.inter(
+      labelStyle: _textStyle(
         color: textSecondaryLight,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
-      hintStyle: GoogleFonts.inter(
+      hintStyle: _textStyle(
         color: textDisabledLight,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
-      errorStyle: GoogleFonts.inter(
+      errorStyle: _textStyle(
         color: errorLight,
         fontSize: 12,
         fontWeight: FontWeight.w400,
@@ -319,7 +312,7 @@ class AppTheme {
       overlayColor: primaryLight.withValues(alpha: 0.2),
       inactiveTrackColor: borderLight,
       valueIndicatorColor: primaryLight,
-      valueIndicatorTextStyle: GoogleFonts.inter(
+      valueIndicatorTextStyle: _textStyle(
         color: onPrimaryLight,
         fontSize: 14,
         fontWeight: FontWeight.w500,
@@ -332,12 +325,12 @@ class AppTheme {
       unselectedLabelColor: textSecondaryLight,
       indicatorColor: primaryLight,
       indicatorSize: TabBarIndicatorSize.label,
-      labelStyle: GoogleFonts.inter(
+      labelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
       ),
-      unselectedLabelStyle: GoogleFonts.inter(
+      unselectedLabelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.5,
@@ -350,7 +343,7 @@ class AppTheme {
         color: textPrimaryLight.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
       ),
-      textStyle: GoogleFonts.inter(
+      textStyle: _textStyle(
         color: surfaceLight,
         fontSize: 12,
         fontWeight: FontWeight.w400,
@@ -361,7 +354,7 @@ class AppTheme {
     // SnackBar Theme
     snackBarTheme: SnackBarThemeData(
       backgroundColor: textPrimaryLight,
-      contentTextStyle: GoogleFonts.inter(
+      contentTextStyle: _textStyle(
         color: surfaceLight,
         fontSize: 14,
         fontWeight: FontWeight.w400,
@@ -378,12 +371,12 @@ class AppTheme {
       elevation: 8.0,
       shadowColor: shadowLight,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: _textStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: textPrimaryLight,
       ),
-      contentTextStyle: GoogleFonts.inter(
+      contentTextStyle: _textStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: textSecondaryLight,
@@ -395,12 +388,12 @@ class AppTheme {
       backgroundColor: secondaryLight,
       selectedColor: primaryLight.withValues(alpha: 0.2),
       disabledColor: borderLight,
-      labelStyle: GoogleFonts.inter(
+      labelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: textPrimaryLight,
       ),
-      secondaryLabelStyle: GoogleFonts.inter(
+      secondaryLabelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: onPrimaryLight,
@@ -450,7 +443,7 @@ class AppTheme {
       elevation: 0,
       shadowColor: shadowDark,
       centerTitle: true,
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: _textStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: textPrimaryDark,
@@ -471,11 +464,11 @@ class AppTheme {
       backgroundColor: surfaceDark,
       selectedItemColor: primaryDark,
       unselectedItemColor: textSecondaryDark,
-      selectedLabelStyle: GoogleFonts.roboto(
+      selectedLabelStyle: _textStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      unselectedLabelStyle: GoogleFonts.roboto(
+      unselectedLabelStyle: _textStyle(
         fontSize: 12,
         fontWeight: FontWeight.w400,
       ),
@@ -502,7 +495,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: _textStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
@@ -518,7 +511,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12.0),
         ),
-        textStyle: GoogleFonts.inter(
+        textStyle: _textStyle(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
@@ -531,7 +524,7 @@ class AppTheme {
         foregroundColor: primaryDark,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-        textStyle: GoogleFonts.inter(
+        textStyle: _textStyle(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.5,
@@ -565,17 +558,17 @@ class AppTheme {
         borderRadius: BorderRadius.circular(12.0),
         borderSide: BorderSide(color: errorDark, width: 2.0),
       ),
-      labelStyle: GoogleFonts.inter(
+      labelStyle: _textStyle(
         color: textSecondaryDark,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
-      hintStyle: GoogleFonts.inter(
+      hintStyle: _textStyle(
         color: textDisabledDark,
         fontSize: 16,
         fontWeight: FontWeight.w400,
       ),
-      errorStyle: GoogleFonts.inter(
+      errorStyle: _textStyle(
         color: errorDark,
         fontSize: 12,
         fontWeight: FontWeight.w400,
@@ -630,7 +623,7 @@ class AppTheme {
       overlayColor: primaryDark.withValues(alpha: 0.2),
       inactiveTrackColor: borderDark,
       valueIndicatorColor: primaryDark,
-      valueIndicatorTextStyle: GoogleFonts.inter(
+      valueIndicatorTextStyle: _textStyle(
         color: onPrimaryDark,
         fontSize: 14,
         fontWeight: FontWeight.w500,
@@ -642,12 +635,12 @@ class AppTheme {
       unselectedLabelColor: textSecondaryDark,
       indicatorColor: primaryDark,
       indicatorSize: TabBarIndicatorSize.label,
-      labelStyle: GoogleFonts.inter(
+      labelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.5,
       ),
-      unselectedLabelStyle: GoogleFonts.inter(
+      unselectedLabelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.5,
@@ -659,7 +652,7 @@ class AppTheme {
         color: textPrimaryDark.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(8),
       ),
-      textStyle: GoogleFonts.inter(
+      textStyle: _textStyle(
         color: surfaceDark,
         fontSize: 12,
         fontWeight: FontWeight.w400,
@@ -669,7 +662,7 @@ class AppTheme {
 
     snackBarTheme: SnackBarThemeData(
       backgroundColor: textPrimaryDark,
-      contentTextStyle: GoogleFonts.inter(
+      contentTextStyle: _textStyle(
         color: surfaceDark,
         fontSize: 14,
         fontWeight: FontWeight.w400,
@@ -685,12 +678,12 @@ class AppTheme {
       elevation: 8.0,
       shadowColor: shadowDark,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-      titleTextStyle: GoogleFonts.inter(
+      titleTextStyle: _textStyle(
         fontSize: 20,
         fontWeight: FontWeight.w600,
         color: textPrimaryDark,
       ),
-      contentTextStyle: GoogleFonts.inter(
+      contentTextStyle: _textStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: textSecondaryDark,
@@ -701,12 +694,12 @@ class AppTheme {
       backgroundColor: secondaryDark,
       selectedColor: primaryDark.withValues(alpha: 0.2),
       disabledColor: borderDark,
-      labelStyle: GoogleFonts.inter(
+      labelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: textPrimaryDark,
       ),
-      secondaryLabelStyle: GoogleFonts.inter(
+      secondaryLabelStyle: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: onPrimaryDark,
@@ -717,8 +710,8 @@ class AppTheme {
   );
 
   /// Helper method to build text theme based on brightness
-  /// Typography Standards: Inter (headings), Inter (body - replacing Source Sans Pro),
-  /// Roboto (captions), JetBrains Mono (data)
+  /// Typography Standards: DM Sans (headings, body, labels),
+  /// JetBrains Mono (data/monospace)
   static TextTheme _buildTextTheme({required bool isLight}) {
     final Color textHighEmphasis = isLight
         ? textHighEmphasisLight
@@ -730,19 +723,19 @@ class AppTheme {
 
     return TextTheme(
       // Display styles - Inter for headings
-      displayLarge: GoogleFonts.inter(
+      displayLarge: _textStyle(
         fontSize: 57,
         fontWeight: FontWeight.w400,
         color: textHighEmphasis,
         letterSpacing: -0.25,
       ),
-      displayMedium: GoogleFonts.inter(
+      displayMedium: _textStyle(
         fontSize: 45,
         fontWeight: FontWeight.w400,
         color: textHighEmphasis,
         letterSpacing: 0,
       ),
-      displaySmall: GoogleFonts.inter(
+      displaySmall: _textStyle(
         fontSize: 36,
         fontWeight: FontWeight.w400,
         color: textHighEmphasis,
@@ -750,19 +743,19 @@ class AppTheme {
       ),
 
       // Headline styles - Inter for headings
-      headlineLarge: GoogleFonts.inter(
+      headlineLarge: _textStyle(
         fontSize: 32,
         fontWeight: FontWeight.w600,
         color: textHighEmphasis,
         letterSpacing: 0,
       ),
-      headlineMedium: GoogleFonts.inter(
+      headlineMedium: _textStyle(
         fontSize: 28,
         fontWeight: FontWeight.w600,
         color: textHighEmphasis,
         letterSpacing: 0,
       ),
-      headlineSmall: GoogleFonts.inter(
+      headlineSmall: _textStyle(
         fontSize: 24,
         fontWeight: FontWeight.w600,
         color: textHighEmphasis,
@@ -770,19 +763,19 @@ class AppTheme {
       ),
 
       // Title styles - Inter for headings
-      titleLarge: GoogleFonts.inter(
+      titleLarge: _textStyle(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         color: textHighEmphasis,
         letterSpacing: 0,
       ),
-      titleMedium: GoogleFonts.inter(
+      titleMedium: _textStyle(
         fontSize: 16,
         fontWeight: FontWeight.w600,
         color: textHighEmphasis,
         letterSpacing: 0.15,
       ),
-      titleSmall: GoogleFonts.inter(
+      titleSmall: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w600,
         color: textHighEmphasis,
@@ -790,21 +783,21 @@ class AppTheme {
       ),
 
       // Body styles - Inter (replacing Source Sans Pro)
-      bodyLarge: GoogleFonts.inter(
+      bodyLarge: _textStyle(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         color: textHighEmphasis,
         letterSpacing: 0.5,
         height: 1.5,
       ),
-      bodyMedium: GoogleFonts.inter(
+      bodyMedium: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         color: textHighEmphasis,
         letterSpacing: 0.25,
         height: 1.43,
       ),
-      bodySmall: GoogleFonts.inter(
+      bodySmall: _textStyle(
         fontSize: 12,
         fontWeight: FontWeight.w300,
         color: textMediumEmphasis,
@@ -813,19 +806,19 @@ class AppTheme {
       ),
 
       // Label styles - Roboto for captions
-      labelLarge: GoogleFonts.roboto(
+      labelLarge: _textStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         color: textHighEmphasis,
         letterSpacing: 0.1,
       ),
-      labelMedium: GoogleFonts.roboto(
+      labelMedium: _textStyle(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         color: textMediumEmphasis,
         letterSpacing: 0.5,
       ),
-      labelSmall: GoogleFonts.roboto(
+      labelSmall: _textStyle(
         fontSize: 11,
         fontWeight: FontWeight.w400,
         color: textDisabled,
@@ -835,14 +828,15 @@ class AppTheme {
   }
 
   /// Helper method to get monospace text style for data display
-  /// Uses JetBrains Mono for ages, IDs, and structured information
+  /// Uses system monospace font for ages, IDs, and structured information
   static TextStyle getMonospaceStyle({
     required bool isLight,
     double fontSize = 14,
     FontWeight fontWeight = FontWeight.w400,
   }) {
     final Color textColor = isLight ? textPrimaryLight : textPrimaryDark;
-    return GoogleFonts.jetBrainsMono(
+    return TextStyle(
+      fontFamily: 'monospace',
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: textColor,

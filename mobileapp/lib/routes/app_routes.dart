@@ -8,6 +8,10 @@ import '../presentation/onboarding_questionnaire/onboarding_questionnaire.dart';
 import '../presentation/pet_detail_screen/pet_detail_screen.dart';
 import '../presentation/account_management_screen/account_management_screen.dart';
 import '../presentation/chat_screen/chat_screen.dart';
+import '../presentation/add_pet_screen/add_pet_screen.dart';
+import '../presentation/edit_pet_screen/edit_pet_screen.dart';
+import '../presentation/public_profile_screen/public_profile_screen.dart';
+import '../presentation/adoption_requests_screen/adoption_requests_screen.dart';
 
 class AppRoutes {
   // TODO: Add routes here
@@ -21,6 +25,10 @@ class AppRoutes {
   static const String petDetail = '/pet-detail-screen';
   static const String profileScreen = '/profile-screen';
   static const String chatScreen = '/chat-screen';
+  static const String addPet = '/add-pet';
+  static const String editPet = '/edit-pet';
+  static const String publicProfile = '/public-profile';
+  static const String adoptionRequests = '/adoption-requests';
 
   static Map<String, WidgetBuilder> routes = {
     initial: (context) => const WelcomeScreen(),
@@ -33,6 +41,9 @@ class AppRoutes {
     petDetail: (context) => const PetDetailScreen(),
     profileScreen: (context) => const AccountManagementScreen(),
     chatScreen: (context) => const ChatScreen(),
-    // TODO: Add your other routes here
+    addPet: (context) => const AddPetScreen(),
+    editPet: (context) => const EditPetScreen(),
+    publicProfile: (context) => const PublicProfileScreen(),
+    adoptionRequests: (context) => const AdoptionRequestsScreen(),
   };
 }

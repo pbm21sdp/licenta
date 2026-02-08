@@ -3,6 +3,7 @@ import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 import '../../../routes/app_routes.dart';
+import './privacy_settings_screen.dart';
 
 class SettingsSectionWidget extends StatelessWidget {
   const SettingsSectionWidget({super.key});
@@ -68,10 +69,10 @@ class SettingsSectionWidget extends StatelessWidget {
             icon: Icons.privacy_tip_outlined,
             title: 'Privacy Controls',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Privacy settings coming soon'),
-                  duration: Duration(seconds: 2),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PrivacySettingsScreen(),
                 ),
               );
             },

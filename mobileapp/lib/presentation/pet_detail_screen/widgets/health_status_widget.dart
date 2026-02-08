@@ -100,14 +100,14 @@ class HealthStatusWidget extends StatelessWidget {
   Color _getStatusColor(String status, ThemeData theme) {
     final lowerStatus = status.toLowerCase();
     if (lowerStatus.contains('vaccinated')) {
-      return Color(0xFF4ECDC4);
+      return Color(0xFF22C55E);
     } else if (lowerStatus.contains('spayed') ||
         lowerStatus.contains('neutered')) {
       return theme.colorScheme.primary;
     } else if (lowerStatus.contains('microchipped')) {
-      return Color(0xFF4ECDC4);
+      return Color(0xFF22C55E);
     } else if (lowerStatus.contains('dewormed')) {
-      return Color(0xFF4ECDC4);
+      return Color(0xFF22C55E);
     }
     return theme.colorScheme.primary;
   }

@@ -72,42 +72,42 @@ class CustomImageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return alignment != null
-        ? Align(alignment: alignment!, child: _buildWidget())
-        : _buildWidget();
+        ? Align(alignment: alignment!, child: _buildWidget(context))
+        : _buildWidget(context);
   }
 
-  Widget _buildWidget() {
+  Widget _buildWidget(BuildContext context) {
     return Padding(
       padding: margin ?? EdgeInsets.zero,
-      child: InkWell(onTap: onTap, child: _buildCircleImage()),
+      child: InkWell(onTap: onTap, child: _buildCircleImage(context)),
     );
   }
 
   ///build the image with border radius
-  _buildCircleImage() {
+  _buildCircleImage(BuildContext context) {
     if (radius != null) {
       return ClipRRect(
         borderRadius: radius ?? BorderRadius.zero,
-        child: _buildImageWithBorder(),
+        child: _buildImageWithBorder(context),
       );
     } else {
-      return _buildImageWithBorder();
+      return _buildImageWithBorder(context);
     }
   }
 
   ///build the image with border and border radius style
-  _buildImageWithBorder() {
+  _buildImageWithBorder(BuildContext context) {
     if (border != null) {
       return Container(
         decoration: BoxDecoration(border: border, borderRadius: radius),
-        child: _buildImageView(),
+        child: _buildImageView(context),
       );
     } else {
-      return _buildImageView();
+      return _buildImageView(context);
     }
   }
 
-  Widget _buildImageView() {
+  Widget _buildImageView(BuildContext context) {
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       switch (imageUrl!.imageType) {
         case ImageType.svg:
@@ -144,6 +144,9 @@ class CustomImageWidget extends StatelessWidget {
             fit: fit,
             imageUrl: imageUrl!,
             color: color,
+            memCacheWidth: width != null && width != double.infinity
+                ? (width! * MediaQuery.of(context).devicePixelRatio).round()
+                : (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).round(),
             placeholder: (context, url) => SizedBox(
               height: 30,
               width: 30,

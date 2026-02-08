@@ -28,6 +28,16 @@ class PetModel {
   final List<String>? traits;
   final DateTime? createdAt;
 
+  // Owner info (peer-to-peer model)
+  final int? ownerId;
+  final String? ownerName;
+  final String? ownerAvatar;
+  final bool isCurrentUserOwner;
+
+  // Stats (pentru My Pets)
+  final int? favoriteCount;
+  final int? pendingApplications;
+
   PetModel({
     required this.id,
     required this.name,
@@ -54,7 +64,16 @@ class PetModel {
     this.photos,
     this.traits,
     this.createdAt,
+    this.ownerId,
+    this.ownerName,
+    this.ownerAvatar,
+    this.isCurrentUserOwner = false,
+    this.favoriteCount,
+    this.pendingApplications,
   });
+
+  /// Verifică dacă utilizatorul curent este proprietarul animalului
+  bool isOwnedBy(int? userId) => userId != null && ownerId == userId;
 
   factory PetModel.fromJson(Map<String, dynamic> json) {
     return PetModel(
@@ -94,6 +113,18 @@ class PetModel {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
+      // Owner info (peer-to-peer model)
+      ownerId: json['owner_id'] ?? json['ownerId'],
+      ownerName: json['owner_name'] ?? json['ownerName'],
+      ownerAvatar: json['owner_avatar'] ?? json['ownerAvatar'],
+      isCurrentUserOwner: json['isCurrentUserOwner'] ?? json['is_current_user_owner'] ?? false,
+      // Stats
+      favoriteCount: json['favorite_count'] != null
+          ? int.tryParse(json['favorite_count'].toString())
+          : null,
+      pendingApplications: json['pending_applications'] != null
+          ? int.tryParse(json['pending_applications'].toString())
+          : null,
     );
   }
 
@@ -114,11 +145,19 @@ class PetModel {
       'story': story,
       'locationCity': locationCity,
       'locationCountry': locationCountry,
+      'locationAddress': locationAddress,
+      'zipCode': zipCode,
+      'shelterContactEmail': shelterContactEmail,
+      'shelterContactPhone': shelterContactPhone,
       'isAvailable': isAvailable,
       'adoptionStatus': adoptionStatus,
       'primaryPhoto': primaryPhoto,
       'photos': photos?.map((p) => p.toJson()).toList(),
       'traits': traits,
+      // Owner info
+      'ownerId': ownerId,
+      'ownerName': ownerName,
+      'ownerAvatar': ownerAvatar,
     };
   }
 
