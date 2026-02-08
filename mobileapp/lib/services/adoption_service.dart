@@ -2,6 +2,7 @@
 // Serviciu pentru gestionarea cererilor de adopție
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../config/api_config.dart';
 import '../data/models/adoption_model.dart';
 import 'api_client.dart';
@@ -34,19 +35,15 @@ class AdoptionService {
         queryParams['status'] = status;
       }
 
-      print('Fetching adoptions from: ${ApiConfig.adoptions}');
       final response = await _apiClient.get(
         ApiConfig.adoptions,
         queryParameters: queryParams,
       );
 
-      print('Adoptions API response: ${response.data}');
       final result = AdoptionsResponse.fromJson(response.data);
-      print('Parsed ${result.applications.length} applications');
       return result;
     } on DioException catch (e) {
-      print('DioException fetching adoptions: ${e.message}');
-      print('Response: ${e.response?.data}');
+      if (kDebugMode) print('DioException fetching adoptions: ${e.message}');
       throw ApiException.fromDioError(e);
     }
   }
@@ -70,7 +67,6 @@ class AdoptionService {
   Future<AdoptionResult> createAdoption(CreateAdoptionRequest request) async {
     try {
       final requestData = request.toJson();
-      print('Adoption request data: $requestData');
 
       final response = await _apiClient.post(
         ApiConfig.adoptions,
@@ -83,7 +79,7 @@ class AdoptionService {
         applicationId: response.data['data']?['application']?['id'],
       );
     } on DioException catch (e) {
-      print('Adoption DioException: ${e.response?.data}');
+      if (kDebugMode) print('Adoption DioException: ${e.response?.data}');
       // Extrage mesajul de eroare detaliat
       if (e.response?.data != null) {
         final data = e.response!.data;

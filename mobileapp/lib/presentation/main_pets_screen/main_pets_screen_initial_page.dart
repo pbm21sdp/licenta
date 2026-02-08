@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_card_swiper/flutter_card_swiper.dart';
@@ -26,6 +27,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
   bool _showUndoButton = false;
   bool _isLoading = true;
   bool _hasError = false;
+  bool _isLoadingPets = false; // Guard contra request-urilor duplicate
   String? _errorMessage;
   int _currentCardIndex = 0;
 
@@ -76,6 +78,10 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
   }
 
   Future<void> _loadPets() async {
+    // Guard contra request-urilor duplicate
+    if (_isLoadingPets) return;
+    _isLoadingPets = true;
+
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -86,15 +92,18 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       // Încearcă să încarce animalele de la API
       final pets = await _petService.getSwipePets(limit: 10);
 
+      final mapped = pets.map(_petToMap).toList(growable: false);
+
       if (mounted) {
         setState(() {
           _pets = pets;
+          _displayPets = mapped;
           _isLoading = false;
           _currentCardIndex = 0;
         });
       }
     } on ApiException catch (e) {
-      print('API Error: ${e.message}');
+      if (kDebugMode) print('API Error: ${e.message}');
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -103,19 +112,27 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
         });
       }
     } catch (e) {
-      print('Error loading pets: $e');
+      if (kDebugMode) print('Error loading pets: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
           _errorMessage = 'Nu se pot încărca animalele. Verifică conexiunea.';
+          _displayPets = _mockPetData;
           _isLoading = false;
+          _currentCardIndex = 0;
         });
       }
+    } finally {
+      _isLoadingPets = false;
     }
   }
 
   Future<void> _refreshPets() async {
-    _currentCardIndex = 0;
+    if (mounted) {
+      setState(() {
+        _currentCardIndex = 0;
+      });
+    }
     await _loadPets();
   }
 
@@ -136,12 +153,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
   }
 
   // Obține datele pentru afișare (API sau mock)
-  List<Map<String, dynamic>> get _displayPets {
-    if (_pets.isNotEmpty) {
-      return _pets.map((pet) => _petToMap(pet)).toList();
-    }
-    return _mockPetData;
-  }
+  List<Map<String, dynamic>> _displayPets = [];
 
   bool _onSwipe(
     int previousIndex,
@@ -159,7 +171,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       // Like - trimite la API
       if (swipedPet != null) {
         _petService.likePet(swipedPet.id).catchError((e) {
-          print('Error liking pet: $e');
+          if (kDebugMode) print('Error liking pet: $e');
         });
       }
     } else if (direction == CardSwiperDirection.left) {
@@ -168,7 +180,7 @@ class _MainPetsScreenInitialPageState extends State<MainPetsScreenInitialPage> {
       // Pass - trimite la API
       if (swipedPet != null) {
         _petService.passPet(swipedPet.id).catchError((e) {
-          print('Error passing pet: $e');
+          if (kDebugMode) print('Error passing pet: $e');
         });
       }
     }

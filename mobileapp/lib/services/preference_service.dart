@@ -2,6 +2,7 @@
 // Serviciu pentru gestionarea preferințelor utilizatorului
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import '../config/api_config.dart';
 import 'api_client.dart';
 
@@ -69,7 +70,7 @@ class PreferenceService {
     } on DioException catch (e) {
       // Dacă primește 404 (nu există preferințe), încearcă POST (create)
       if (e.response?.statusCode == 404) {
-        print('Preferences not found, creating new...');
+        if (kDebugMode) print('Preferences not found, creating new...');
         return await savePreferences(UserPreferences(
           preferredPetTypes: updates['preferredPetTypes'] != null
               ? List<String>.from(updates['preferredPetTypes'])

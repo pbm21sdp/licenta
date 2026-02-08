@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 
 class ApiClient {
   static final ApiClient _instance = ApiClient._internal();
@@ -85,16 +85,22 @@ class ApiClient {
   InterceptorsWrapper _loggingInterceptor() {
     return InterceptorsWrapper(
       onRequest: (options, handler) {
-        print('🌐 REQUEST[${options.method}] => ${options.uri}');
+        if (kDebugMode) {
+          print('🌐 REQUEST[${options.method}] => ${options.uri}');
+        }
         return handler.next(options);
       },
       onResponse: (response, handler) {
-        print('✅ RESPONSE[${response.statusCode}] => ${response.requestOptions.uri}');
+        if (kDebugMode) {
+          print('✅ RESPONSE[${response.statusCode}] => ${response.requestOptions.uri}');
+        }
         return handler.next(response);
       },
       onError: (error, handler) {
-        print('❌ ERROR[${error.response?.statusCode}] => ${error.requestOptions.uri}');
-        print('   Message: ${error.message}');
+        if (kDebugMode) {
+          print('❌ ERROR[${error.response?.statusCode}] => ${error.requestOptions.uri}');
+          print('   Message: ${error.message}');
+        }
         return handler.next(error);
       },
     );

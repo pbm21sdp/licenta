@@ -1,9 +1,9 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../widgets/custom_image_widget.dart';
-import '../../widgets/custom_icon_widget.dart';
 import '../../services/auth_service.dart';
 import '../../services/preference_service.dart';
 import '../../services/adoption_service.dart';
@@ -13,6 +13,7 @@ import '../../data/models/adoption_model.dart';
 import './widgets/adoption_status_tracking_widget.dart';
 import './widgets/application_history_card_widget.dart';
 import './widgets/edit_profile_modal_widget.dart';
+import './widgets/my_pets_section_widget.dart';
 import './widgets/preference_editor_modal_widget.dart';
 import './widgets/saved_preferences_card_widget.dart';
 import './widgets/settings_section_widget.dart';
@@ -76,20 +77,46 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     });
 
     try {
-      // Încarcă datele în paralel
-      await Future.wait([
-        _loadUserProfile(),
-        _loadPreferences(),
-        _loadAdoptions(),
-      ]);
+      // Încarcă datele în paralel - fără setState individual
+      final results = await Future.wait([
+        _fetchUserProfile(),
+        _fetchPreferences(),
+        _fetchAdoptions(),
+      ], eagerError: false);
 
+      // Un singur setState cu toate datele
       if (mounted) {
         setState(() {
+          // Apply profile data
+          final user = results[0] as UserModel?;
+          if (user != null) {
+            _user = user;
+            _userProfile = {
+              "name": user.name ?? user.email.split('@')[0],
+              "email": user.email,
+              "memberSince": user.createdAt ?? DateTime.now(),
+              "avatar": user.avatarUrl ?? "",
+              "avatarSemanticLabel": "Profile photo of ${user.name ?? 'user'}",
+            };
+          }
+
+          // Apply preferences data
+          final prefs = results[1] as Map<String, dynamic>?;
+          if (prefs != null) {
+            _savedPreferences = prefs;
+          }
+
+          // Apply adoptions data
+          final adoptions = results[2] as List<Map<String, dynamic>>?;
+          if (adoptions != null) {
+            _applicationHistory = adoptions;
+          }
+
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('Error loading account data: $e');
+      if (kDebugMode) print('Error loading account data: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -100,95 +127,73 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     }
   }
 
-  Future<void> _loadUserProfile() async {
+  /// Fetch profile fără setState - returnează UserModel
+  Future<UserModel?> _fetchUserProfile() async {
     try {
-      final user = await _authService.getCurrentUser();
-      if (user != null && mounted) {
-        setState(() {
-          _user = user;
-          _userProfile = {
-            "name": user.name ?? user.email.split('@')[0],
-            "email": user.email,
-            "memberSince": user.createdAt ?? DateTime.now(),
-            "avatar": user.avatarUrl ?? "",
-            "avatarSemanticLabel": "Profile photo of ${user.name ?? 'user'}",
-          };
-        });
-      }
+      return await _authService.getCurrentUser();
     } on ApiException catch (e) {
-      print('API Error loading profile: ${e.message}');
+      if (kDebugMode) print('API Error loading profile: ${e.message}');
+      return null;
     }
   }
 
-  Future<void> _loadPreferences() async {
+  /// Fetch preferences fără setState - returnează Map gata de UI
+  Future<Map<String, dynamic>?> _fetchPreferences() async {
     try {
       final prefs = await _preferenceService.getPreferences();
-      print('Preferences loaded: $prefs');
-      if (prefs != null && mounted) {
-        print('  - preferredPetTypes: ${prefs.preferredPetTypes}');
-        print('  - hasGarden: ${prefs.hasGarden}');
-        print('  - hasChildren: ${prefs.hasChildren}');
+      if (prefs == null) return null;
 
-        // Convertește tipul de pet din format API în format UI
-        String petTypeDisplay = 'Not set';
-        if (prefs.preferredPetTypes != null && prefs.preferredPetTypes!.isNotEmpty) {
-          if (prefs.preferredPetTypes!.contains('dog') && prefs.preferredPetTypes!.contains('cat')) {
-            petTypeDisplay = 'Both';
-          } else if (prefs.preferredPetTypes!.contains('dog')) {
-            petTypeDisplay = 'Dog';
-          } else if (prefs.preferredPetTypes!.contains('cat')) {
-            petTypeDisplay = 'Cat';
-          } else {
-            petTypeDisplay = prefs.preferredPetTypes!.first;
-          }
+      // Convertește tipul de pet din format API în format UI
+      String petTypeDisplay = 'Not set';
+      if (prefs.preferredPetTypes != null && prefs.preferredPetTypes!.isNotEmpty) {
+        if (prefs.preferredPetTypes!.contains('dog') && prefs.preferredPetTypes!.contains('cat')) {
+          petTypeDisplay = 'Both';
+        } else if (prefs.preferredPetTypes!.contains('dog')) {
+          petTypeDisplay = 'Dog';
+        } else if (prefs.preferredPetTypes!.contains('cat')) {
+          petTypeDisplay = 'Cat';
+        } else {
+          petTypeDisplay = prefs.preferredPetTypes!.first;
         }
-
-        // Convertește garden din boolean în text
-        String gardenDisplay = 'Not set';
-        if (prefs.hasGarden == true) {
-          gardenDisplay = 'Yes';
-        } else if (prefs.hasGarden == false) {
-          gardenDisplay = 'No';
-        }
-
-        setState(() {
-          _savedPreferences = {
-            "petType": petTypeDisplay,
-            "gardenAccess": gardenDisplay,
-            "hasChildren": prefs.hasChildren ?? false,
-            "childrenAgeRange": prefs.childrenAges?.join(', ') ?? '',
-            "existingPets": prefs.otherPetTypes ?? <String>[],
-            "petCounts": <String, int>{},
-            "hasOtherPets": prefs.hasOtherPets ?? false,
-          };
-        });
-        print('Preferences UI state updated: $_savedPreferences');
-      } else {
-        print('No preferences found or widget not mounted');
       }
+
+      // Convertește garden din boolean în text
+      String gardenDisplay = 'Not set';
+      if (prefs.hasGarden == true) {
+        gardenDisplay = 'Yes';
+      } else if (prefs.hasGarden == false) {
+        gardenDisplay = 'No';
+      }
+
+      return {
+        "petType": petTypeDisplay,
+        "gardenAccess": gardenDisplay,
+        "hasChildren": prefs.hasChildren ?? false,
+        "childrenAgeRange": prefs.childrenAges?.join(', ') ?? '',
+        "existingPets": prefs.otherPetTypes ?? <String>[],
+        "petCounts": <String, int>{},
+        "hasOtherPets": prefs.hasOtherPets ?? false,
+      };
     } on ApiException catch (e) {
-      print('API Error loading preferences: ${e.message}');
+      if (kDebugMode) print('API Error loading preferences: ${e.message}');
+      return null;
     } catch (e) {
-      print('Error loading preferences: $e');
+      if (kDebugMode) print('Error loading preferences: $e');
+      return null;
     }
   }
 
-  Future<void> _loadAdoptions() async {
+  /// Fetch adoptions fără setState - returnează lista gata de UI
+  Future<List<Map<String, dynamic>>?> _fetchAdoptions() async {
     try {
       final response = await _adoptionService.getMyAdoptions();
-      print('Adoptions loaded: ${response.applications.length} applications');
-      for (var app in response.applications) {
-        print('  - ${app.petName} (${app.status})');
-      }
-      if (mounted) {
-        setState(() {
-          _applicationHistory = response.applications.map((adoption) => _adoptionToMap(adoption)).toList();
-        });
-      }
+      return response.applications.map((adoption) => _adoptionToMap(adoption)).toList();
     } on ApiException catch (e) {
-      print('API Error loading adoptions: ${e.message}');
+      if (kDebugMode) print('API Error loading adoptions: ${e.message}');
+      return null;
     } catch (e) {
-      print('Error loading adoptions: $e');
+      if (kDebugMode) print('Error loading adoptions: $e');
+      return null;
     }
   }
 
@@ -199,7 +204,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
         statusColor = const Color(0xFFFFE66D);
         break;
       case 'approved':
-        statusColor = const Color(0xFF4ECDC4);
+        statusColor = const Color(0xFF22C55E); // Sage green
         break;
       case 'rejected':
       case 'declined':
@@ -284,13 +289,13 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Preferences updated successfully'),
-                  backgroundColor: Color(0xFF4ECDC4),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   duration: Duration(seconds: 2),
                 ),
               );
             }
           } on ApiException catch (e) {
-            print('Error saving preferences: ${e.message}');
+            if (kDebugMode) print('Error saving preferences: ${e.message}');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -299,7 +304,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
                 ),
               );
               // Reîncarcă preferințele din API pentru a resincroniza
-              _loadPreferences();
+              final freshPrefs = await _fetchPreferences();
+              if (freshPrefs != null && mounted) {
+                setState(() => _savedPreferences = freshPrefs);
+              }
             }
           }
         },
@@ -323,19 +331,24 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
     // Convertește gardenAccess în boolean
     final gardenAccess = uiPrefs['gardenAccess'] as String?;
     bool? hasGarden;
-    if (gardenAccess == 'Open Garden' || gardenAccess == 'Closed Garden') {
+    if (gardenAccess == 'Open Garden' || gardenAccess == 'Closed Garden' || gardenAccess == 'Yes') {
       hasGarden = true;
     } else if (gardenAccess == 'No Garden' || gardenAccess == 'No') {
       hasGarden = false;
+    }
+
+    // Convertește childrenAgeRange în listă
+    List<String>? childrenAges;
+    final childrenAgeRange = uiPrefs['childrenAgeRange'];
+    if (childrenAgeRange != null && childrenAgeRange.toString().isNotEmpty) {
+      childrenAges = [childrenAgeRange.toString()];
     }
 
     return {
       'preferredPetTypes': petTypes,
       'hasGarden': hasGarden,
       'hasChildren': uiPrefs['hasChildren'] ?? false,
-      'childrenAges': uiPrefs['childrenAgeRange'] != null
-          ? [uiPrefs['childrenAgeRange']]
-          : null,
+      'childrenAges': childrenAges,
       'hasOtherPets': (uiPrefs['existingPets'] as List?)?.isNotEmpty ?? false,
       'otherPetTypes': uiPrefs['existingPets'],
     };
@@ -365,7 +378,7 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Profile updated successfully'),
-                  backgroundColor: Color(0xFF4ECDC4),
+                  backgroundColor: Theme.of(context).colorScheme.primary,
                   duration: Duration(seconds: 2),
                 ),
               );
@@ -687,6 +700,10 @@ class _AccountManagementScreenState extends State<AccountManagementScreen> {
               SavedPreferencesCardWidget(
                 preferences: _savedPreferences,
                 onEditPreferences: _showPreferenceEditor,
+              ),
+              SizedBox(height: 2.h),
+              MyPetsSectionWidget(
+                onRefreshRequested: _refreshData,
               ),
               SizedBox(height: 2.h),
               AdoptionStatusTrackingWidget(
