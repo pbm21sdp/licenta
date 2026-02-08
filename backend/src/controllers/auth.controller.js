@@ -658,6 +658,117 @@ const disableMFA = async (req, res) => {
 };
 
 // ========================================
+// VERIFY EMAIL PAGE (GET - for email links)
+// ========================================
+const verifyEmailPage = async (req, res) => {
+  const { token } = req.query;
+
+  const htmlTemplate = (title, message, isSuccess) => `
+    <!DOCTYPE html>
+    <html lang="ro">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${title} - Pet Adoption</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          padding: 20px;
+        }
+        .container {
+          background: white;
+          border-radius: 20px;
+          padding: 40px;
+          max-width: 500px;
+          text-align: center;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .icon {
+          font-size: 80px;
+          margin-bottom: 20px;
+        }
+        h1 {
+          color: ${isSuccess ? '#4ECDC4' : '#FF6B6B'};
+          margin-bottom: 15px;
+          font-size: 28px;
+        }
+        p {
+          color: #666;
+          font-size: 16px;
+          line-height: 1.6;
+          margin-bottom: 30px;
+        }
+        .button {
+          display: inline-block;
+          padding: 15px 40px;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          text-decoration: none;
+          border-radius: 30px;
+          font-weight: 600;
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        .paw { color: #667eea; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="icon">${isSuccess ? '✅' : '❌'}</div>
+        <h1>${title}</h1>
+        <p>${message}</p>
+        <p class="paw">🐾 Pet Adoption</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  if (!token) {
+    return res.status(400).send(htmlTemplate(
+      'Token lipsă',
+      'Link-ul de verificare este invalid. Te rugăm să folosești link-ul complet din email.',
+      false
+    ));
+  }
+
+  try {
+    const user = await User.verifyEmail(token);
+
+    if (!user) {
+      return res.status(400).send(htmlTemplate(
+        'Token invalid sau expirat',
+        'Link-ul de verificare a expirat sau a fost deja folosit. Te rugăm să soliciți un nou email de verificare din aplicație.',
+        false
+      ));
+    }
+
+    await sendWelcomeEmail(user.email, user.name);
+
+    return res.status(200).send(htmlTemplate(
+      'Email verificat cu succes!',
+      `Felicitări, ${user.name}! Contul tău a fost activat. Acum poți închide această pagină și te poți autentifica în aplicație.`,
+      true
+    ));
+  } catch (error) {
+    console.error('Email verification page error:', error);
+    return res.status(500).send(htmlTemplate(
+      'Eroare',
+      'A apărut o eroare la verificarea email-ului. Te rugăm să încerci din nou mai târziu.',
+      false
+    ));
+  }
+};
+
+// ========================================
 // EXPORTS
 // ========================================
 module.exports = {
@@ -665,6 +776,7 @@ module.exports = {
   registerAdmin,
   login,
   verifyEmail,
+  verifyEmailPage,
   resendVerification,
   forgotPassword,
   resetPassword,

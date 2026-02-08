@@ -154,9 +154,13 @@ const createAdoption = async (req, res) => {
       message,
     } = req.body;
 
-    // Check if pet exists and is available
+    // Check if pet exists and is available, including owner info
     const petResult = await query(
-      'SELECT id, name, type, breed, is_available, adoption_status FROM pets WHERE id = $1',
+      `SELECT p.id, p.name, p.type, p.breed, p.is_available, p.adoption_status, p.owner_id,
+              u.name as owner_name, u.email as owner_email
+       FROM pets p
+       LEFT JOIN users u ON p.owner_id = u.id
+       WHERE p.id = $1`,
       [petId]
     );
 
@@ -168,6 +172,14 @@ const createAdoption = async (req, res) => {
     }
 
     const pet = petResult.rows[0];
+
+    // Nu permite adoptarea propriilor animale
+    if (pet.owner_id === userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot apply to adopt your own pet.',
+      });
+    }
 
     if (!pet.is_available || pet.adoption_status !== 'available') {
       return res.status(400).json({
@@ -190,21 +202,23 @@ const createAdoption = async (req, res) => {
       });
     }
 
-    // Create adoption application
+    // Create adoption application with owner info
     const insertQuery = `
       INSERT INTO adoptions (
         user_id, pet_id, pet_name, pet_type, pet_breed,
+        owner_id, owner_name, owner_email,
         full_name, email, phone, address, city, postal_code,
         housing_type, living_arrangement, has_yard,
         has_children, children, has_other_pets, other_pets, other_pets_details,
         previous_pet_experience, adoption_reason, message, status
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'pending'
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, 'pending'
       ) RETURNING *
     `;
 
     const result = await query(insertQuery, [
       userId, petId, pet.name, pet.type, pet.breed,
+      pet.owner_id, pet.owner_name, pet.owner_email,
       fullName, email, phone, address, city, postalCode,
       housingType, livingArrangement, hasYard,
       hasChildren, children, hasOtherPets, otherPets, otherPetsDetails,

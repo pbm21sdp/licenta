@@ -15,7 +15,12 @@ const petRoutes = require('./routes/pet.routes'); // importa rutele pentru anima
 const favoriteRoutes = require('./routes/favorite.routes'); // importa rutele pentru favorite
 const adoptionRoutes = require('./routes/adoption.routes'); // importa rutele pentru adoptii
 const preferenceRoutes = require('./routes/preference.routes'); // importa rutele pentru preferinte utilizator
-const adminRoutes = require('./routes/admin.routes'); // importa rutele pentru administrare
+const adminRoutes = require('./routes/admin.routes'); // importa rutele pentru administrare (deprecated)
+
+// Peer-to-peer routes (new)
+const userPetsRoutes = require('./routes/user-pets.routes'); // rutele pentru gestionarea animalelor proprii
+const ownerAdoptionsRoutes = require('./routes/owner-adoptions.routes'); // rutele pentru gestionarea cererilor de adopție primite
+const userProfileRoutes = require('./routes/user-profile.routes'); // rutele pentru profile publice
 
 // Import pentru database
 const { pool } = require('./config/database'); // importa conexiunea la PostgreSQL database
@@ -109,8 +114,21 @@ app.use(`/api/${process.env.API_VERSION || 'v1'}/adoptions`, adoptionRoutes);
 // User preferences routes (protected)
 app.use(`/api/${process.env.API_VERSION || 'v1'}/preferences`, preferenceRoutes);
 
-// Admin routes (protected + admin only)
+// Admin routes (protected + admin only) - DEPRECATED
 app.use(`/api/${process.env.API_VERSION || 'v1'}/admin`, adminRoutes);
+
+// ==========================================
+// PEER-TO-PEER ROUTES (NEW)
+// ==========================================
+
+// My pets routes (authenticated users can manage their own pets)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/my-pets`, userPetsRoutes);
+
+// Owner adoptions routes (pet owners manage adoption requests)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/owner/adoptions`, ownerAdoptionsRoutes);
+
+// User profile routes (public profiles and user search)
+app.use(`/api/${process.env.API_VERSION || 'v1'}/users`, userProfileRoutes);
 
 
 // 404 handler - Route not found
@@ -161,7 +179,10 @@ Pets:        http://localhost:${PORT}/api/v1/pets
 Favorites:   http://localhost:${PORT}/api/v1/favorites
 Adoptions:   http://localhost:${PORT}/api/v1/adoptions
 Preferences: http://localhost:${PORT}/api/v1/preferences
-Admin:       http://localhost:${PORT}/api/v1/admin
+My Pets:     http://localhost:${PORT}/api/v1/my-pets
+Owner:       http://localhost:${PORT}/api/v1/owner/adoptions
+Users:       http://localhost:${PORT}/api/v1/users
+Admin:       http://localhost:${PORT}/api/v1/admin (deprecated)
 
       `);
     });

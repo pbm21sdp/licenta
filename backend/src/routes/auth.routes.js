@@ -48,8 +48,15 @@ router.post(
 router.post('/login', validateLogin, authController.login);
 
 /**
+ * @route   GET /api/v1/auth/verify-email
+ * @desc    Verify email with token (from email link) - returns HTML page
+ * @access  Public
+ */
+router.get('/verify-email', authController.verifyEmailPage);
+
+/**
  * @route   POST /api/v1/auth/verify-email
- * @desc    Verify email with token
+ * @desc    Verify email with token (API call)
  * @access  Public
  */
 router.post('/verify-email', validateVerifyEmail, authController.verifyEmail);

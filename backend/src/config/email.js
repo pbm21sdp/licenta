@@ -29,7 +29,9 @@ transporter.verify(function (error, success) {
  * @param {string} token - Verification token
  */
 const sendVerificationEmail = async (email, name, token) => {
-  const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  // Use backend URL for verification (serves HTML page)
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+  const verificationUrl = `${backendUrl}/api/v1/auth/verify-email?token=${token}`;
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,

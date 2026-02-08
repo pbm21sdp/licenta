@@ -71,14 +71,16 @@ const getPets = async (req, res) => {
 
     const whereClause = whereConditions.join(' AND ');
 
-    // Get pets with primary photo
+    // Get pets with primary photo and owner info
     const petsQuery = `
       SELECT
         p.id, p.name, p.type, p.breed, p.age_category, p.gender, p.size, p.color,
         p.fee, p.description, p.location_city, p.location_country,
-        p.created_at,
+        p.created_at, p.owner_id,
+        u.name as owner_name, u.avatar_url as owner_avatar,
         (SELECT photo_url FROM pet_photos WHERE pet_id = p.id AND is_primary = true LIMIT 1) as primary_photo
       FROM pets p
+      LEFT JOIN users u ON p.owner_id = u.id
       WHERE ${whereClause}
       ORDER BY p.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -157,11 +159,13 @@ const getSwipePets = async (req, res) => {
       SELECT
         p.id, p.name, p.type, p.breed, p.age_category, p.gender, p.size, p.color,
         p.fee, p.description, p.health_status, p.story,
-        p.location_city, p.location_country,
+        p.location_city, p.location_country, p.owner_id,
+        u.name as owner_name, u.avatar_url as owner_avatar,
         (SELECT photo_url FROM pet_photos WHERE pet_id = p.id AND is_primary = true LIMIT 1) as primary_photo,
         (SELECT json_agg(photo_url) FROM pet_photos WHERE pet_id = p.id) as photos,
         (SELECT json_agg(trait) FROM pet_traits WHERE pet_id = p.id) as traits
       FROM pets p
+      LEFT JOIN users u ON p.owner_id = u.id
       WHERE ${whereConditions.join(' AND ')}
       ORDER BY RANDOM()
       LIMIT $${paramIndex}
@@ -192,14 +196,19 @@ const getSwipePets = async (req, res) => {
 const getPetById = async (req, res) => {
   try {
     const { id } = req.params;
+    const currentUserId = req.user?.id; // Poate fi undefined pentru vizitatori anonimi
 
     const petQuery = `
       SELECT
         p.*,
+        u.id as owner_id,
+        u.name as owner_name,
+        u.avatar_url as owner_avatar,
         (SELECT json_agg(json_build_object('id', id, 'url', photo_url, 'is_primary', is_primary))
          FROM pet_photos WHERE pet_id = p.id) as photos,
         (SELECT json_agg(trait) FROM pet_traits WHERE pet_id = p.id) as traits
       FROM pets p
+      LEFT JOIN users u ON p.owner_id = u.id
       WHERE p.id = $1
     `;
 
@@ -212,10 +221,18 @@ const getPetById = async (req, res) => {
       });
     }
 
+    const pet = result.rows[0];
+
+    // Adaugă un flag pentru a indica dacă utilizatorul curent este owner-ul
+    const isCurrentUserOwner = currentUserId && pet.owner_id === currentUserId;
+
     res.status(200).json({
       success: true,
       data: {
-        pet: result.rows[0],
+        pet: {
+          ...pet,
+          isCurrentUserOwner,
+        },
       },
     });
   } catch (error) {
